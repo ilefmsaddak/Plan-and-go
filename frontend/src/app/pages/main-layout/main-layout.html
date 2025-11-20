@@ -1,0 +1,57 @@
+<div class="main-layout">
+  <!-- Header with Title and Navigation -->
+  <header class="header-section">
+    <div class="header-content">
+      <div class="brand">
+        <span class="brand-icon">📍</span>
+        <h1 class="brand-title">Plan & Go</h1>
+      </div>
+      <nav class="nav-menu">
+        <button class="nav-item">Existing Itineraries</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container: 3 Parts Layout -->
+  <div class="content-wrapper">
+    <!-- Left Part: Trip Bucket / Itinerary Planning -->
+    <section class="left-panel trip-bucket">
+      <div class="panel-header">
+        <h3>Place Bucket</h3>
+      </div>
+      <div class="bucket-content">
+        <!-- Placeholder for trip details -->
+        <div class="trip-item">
+          <span class="date-label">8/23/2020</span>
+          <span class="temp-label">82.78° / 73.51°</span>
+        </div>
+        <div class="trip-item">
+          <span class="date-label">8/24/2020</span>
+          <span class="temp-label">81.48° / 72.34°</span>
+        </div>
+        <div class="trip-item">
+          <span class="date-label">8/25/2020</span>
+          <span class="temp-label">80.82° / 72.27°</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Middle Part: Filters Panel with Places List -->
+    <section class="middle-panel filters-container">
+      <app-filters-panel
+        [mapLocation]="currentLocation"
+        [searchRadius]="searchRadius"
+        (filtersChanged)="onFiltersChanged($event)"
+        (placesFound)="onPlacesFound($event)">
+      </app-filters-panel>
+    </section>
+
+    <!-- Right Part: Google Maps -->
+    <section class="right-panel map-container">
+      <app-google-maps
+        [activeFilters]="activeFilters"
+        [places]="places">
+      </app-google-maps>
+    </section>
+  </div>
+</div>

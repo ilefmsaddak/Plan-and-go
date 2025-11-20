@@ -1,0 +1,201 @@
+<div class="filters-panel-container">
+  <!-- Filters Header -->
+  <div class="filters-header">
+    <h3 class="filters-title">Filters</h3>
+    <span class="count-badge" *ngIf="selectedFilters.length > 0">{{ selectedFilters.length }}</span>
+  </div>
+
+  <!-- Filter Buttons Grid -->
+  <div class="filters-grid">
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('site')"
+      (click)="toggleFilter('site')"
+      title="Tourism Sites">
+      <span class="filter-icon">📷</span>
+      <span class="filter-text">Site</span>
+    </button>
+
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('hotel')"
+      (click)="toggleFilter('hotel')"
+      title="Hotels">
+      <span class="filter-icon">🏨</span>
+      <span class="filter-text">Hotel</span>
+    </button>
+
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('shop')"
+      (click)="toggleFilter('shop')"
+      title="Shopping">
+      <span class="filter-icon">🛍️</span>
+      <span class="filter-text">Shop</span>
+    </button>
+
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('food')"
+      (click)="toggleFilter('food')"
+      title="Restaurants">
+      <span class="filter-icon">🍽️</span>
+      <span class="filter-text">Food</span>
+    </button>
+
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('cafe')"
+      (click)="toggleFilter('cafe')"
+      title="Cafes">
+      <span class="filter-icon">☕</span>
+      <span class="filter-text">Cafe</span>
+    </button>
+
+    <button
+      class="filter-btn"
+      [class.selected]="selectedFilters.includes('transports')"
+      (click)="toggleFilter('transports')"
+      title="Public Transport">
+      <span class="filter-icon">🚌</span>
+      <span class="filter-text">Transports</span>
+    </button>
+  </div>
+
+  <!-- Divider -->
+  <div class="filters-divider"></div>
+
+  <!-- Results Section -->
+  <div class="results-section" *ngIf="showResults">
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p class="loading-text">Recherche des lieux...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state" *ngIf="error && !loading">
+      <span class="error-icon">⚠️</span>
+      <p class="error-message">{{ error }}</p>
+    </div>
+
+    <!-- Results Header -->
+    <div class="results-header" *ngIf="!loading && places.length > 0">
+      <h4 class="results-title">{{ resultsCount }} Lieux disponibles</h4>
+    </div>
+
+    <!-- Places List -->
+    <div class="places-list" *ngIf="!loading && places.length > 0">
+      <div 
+        class="place-card" 
+        *ngFor="let place of places"
+        [attr.data-place-id]="place.placeId"
+        (click)="onPlaceCardClick(place)"
+      >
+        <!-- Photo -->
+        <div class="place-photo">
+          <img 
+            [src]="getPlacePhoto(place)" 
+            [alt]="place.name"
+            class="photo-image"
+            (error)="onImageError($event, place)"
+          />
+          <div class="place-type-badge">{{ place.type | uppercase }}</div>
+        </div>
+
+        <!-- Content -->
+        <div class="place-content">
+          <h5 class="place-name">{{ place.name }}</h5>
+          <p class="place-address">📍 {{ place.address }}</p>
+          
+          <!-- Rating -->
+          <div class="place-rating">
+            <span class="stars">{{ getStars(place.rating) }}</span>
+            <span class="reviews">({{ place.reviews | number }})</span>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="place-action">
+          <button 
+            class="view-btn"
+            (click)="onPlaceCardClick(place)"
+            title="Voir les détails">
+            →
+          </button>
+      </div>
+    </div>
+
+  
+  </div>
+
+  
+  <!-- Place Details Section -->
+  <div class="place-details-section" *ngIf="showPlaceDetails && selectedPlace">
+    <!-- Header avec bouton retour -->
+    <div class="details-header">
+      <button class="back-btn" (click)="closePlaceDetails()">
+        <span class="back-arrow">←</span>
+        Retour
+      </button>
+    </div>
+
+    <!-- Photo du lieu -->
+    <div class="details-photo">
+      <img 
+        [src]="getPlacePhoto(selectedPlace)" 
+        [alt]="selectedPlace.name"
+        class="details-photo-image"
+        (error)="onImageError($event, selectedPlace)"
+      />
+      <div class="details-type-badge">{{ selectedPlace.type | uppercase }}</div>
+    </div>
+
+    <!-- Contenu des détails -->
+    <div class="details-content">
+      <h3 class="details-name">{{ selectedPlace.name }}</h3>
+      <p class="details-address">📍 {{ formatAddress(selectedPlace.address) }}</p>
+      
+      <!-- Rating -->
+      <div class="details-rating">
+        <span class="stars">{{ getStars(selectedPlace.rating) }}</span>
+        <span class="reviews">({{ selectedPlace.reviews | number }} avis)</span>
+      </div>
+
+      <!-- Informations supplémentaires (comme dans l'image) -->
+      <div class="additional-info">
+        <div class="info-item">
+          <span class="info-label">Téléphone:</span>
+          <span class="info-value">{{ selectedPlace.phone || 'Non disponible' }}</span>
+        </div>
+        
+        <div class="info-item" *ngIf="selectedPlace.website">
+          <span class="info-label">Site web:</span>
+          <a [href]="selectedPlace.website" target="_blank" class="website-link">
+            {{ selectedPlace.website }}
+          </a>
+        </div>
+
+        <!-- Avis (exemple comme dans l'image) -->
+        <div class="reviews-section" *ngIf="selectedPlace.reviewText">
+          <h4 class="reviews-title">Avis récents</h4>
+          <div class="review-item">
+            <p class="review-text">{{ selectedPlace.reviewText }}</p>
+          </div>
+        </div>
+
+        <!-- Services/Équipements -->
+        <div class="amenities-section" *ngIf="selectedPlace.amenities">
+          <h4 class="amenities-title">Services</h4>
+          <div class="amenities-list">
+            <span class="amenity-badge" *ngFor="let amenity of selectedPlace.amenities">
+              {{ amenity }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+   
+ 
+</div>

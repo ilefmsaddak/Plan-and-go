@@ -1,0 +1,14 @@
+<div id="panel">
+  <h3>Google Maps & Directions</h3>
+  <div class="input-group">
+    <div class="autocomplete-container">
+      <input id="origin-input" type="text" placeholder="Enter origin address" />
+    </div>
+    <div class="autocomplete-container">
+      <input id="destination-input" type="text" placeholder="Enter destination address" />
+    </div>
+    <button (click)="calculateAndDisplayRoute()">Get Directions</button>
+  </div>
+  <div id="warnings-panel"></div>
+</div>
+<div id="map"></div>
