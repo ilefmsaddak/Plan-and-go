@@ -1,0 +1,34 @@
+<button (click)="SumReviews()" [disabled]="loading" class="ai-btn">
+  <span *ngIf="!loading">✨ Summarize Reviews</span>
+  <span *ngIf="loading" class="loading">
+    <span class="hourglass">⌛</span> Generating...
+  </span>
+</button>
+
+<!-- AI Summary -->
+<div *ngIf="aiSummary" class="ai-summary-card">
+  <h3>AI Summary</h3>
+  <p>{{ aiSummary }}</p>
+</div>
+
+<!-- Reviews -->
+<div *ngFor="let review of reviews" class="review-item">
+
+  <!-- Author section -->
+  <div class="author-box">
+
+    <div>
+      <h3>{{ review.author_name }}</h3>
+
+      <!-- ⭐ Star rating -->
+      <div class="stars">
+        <span *ngFor="let star of [1,2,3,4,5]">
+          <span [class.filled]="star <= review.rating">★</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <p class="review-text">{{ review.text }}</p>
+</div>
+

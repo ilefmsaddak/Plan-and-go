@@ -177,12 +177,7 @@
         </div>
 
         <!-- Avis (exemple comme dans l'image) -->
-        <div class="reviews-section" *ngIf="selectedPlace.reviewText">
-          <h4 class="reviews-title">Avis récents</h4>
-          <div class="review-item">
-            <p class="review-text">{{ selectedPlace.reviewText }}</p>
-          </div>
-        </div>
+        <app-reviews [placeId]="selectedPlace.placeId"></app-reviews>
 
         <!-- Services/Équipements -->
         <div class="amenities-section" *ngIf="selectedPlace.amenities">

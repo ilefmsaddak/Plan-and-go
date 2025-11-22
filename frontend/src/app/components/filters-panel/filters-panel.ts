@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Place } from '../../models/interfaces';
 import { PlacesService } from '../../services/places.service';
 import { Observable } from 'rxjs';
-
+import { Reviews } from '../reviews/reviews';
 @Component({
   selector: 'app-filters-panel',
-  imports: [CommonModule],
+  imports: [CommonModule,Reviews],
   templateUrl: './filters-panel.html',
   standalone: true,
   styleUrl: './filters-panel.css'
@@ -128,6 +128,7 @@ export class FiltersPanel implements OnInit, OnChanges {
     // Emit an event to the map to highlight this marker
     this.placesFound.emit([place]);
     this.selectedPlace = place;
+    console.log('Selected place:', place.placeId);
     this.showPlaceDetails = true;
   }
 

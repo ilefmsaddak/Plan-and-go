@@ -6,11 +6,12 @@ import { Place } from '../../models/interfaces';
 
 @Component({
   selector: 'app-main-layout',
-  imports: [CommonModule, FiltersPanel, GoogleMaps],
+  imports: [CommonModule, FiltersPanel, GoogleMaps,],
   templateUrl: './main-layout.html',
   standalone: true,
   styleUrl: './main-layout.css'
 })
+
 export class MainLayout {
   activeFilters: string[] = [];
   places: Place[] = [];

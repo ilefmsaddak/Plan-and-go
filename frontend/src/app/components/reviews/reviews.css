@@ -1,0 +1,89 @@
+/* Fancy button */
+.ai-btn {
+  background: linear-gradient(135deg, #4a67ff, #7e8dff);
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  font-weight: 600;
+  box-shadow: 0 5px 14px rgba(74, 103, 255, 0.3);
+}
+
+.ai-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(74, 103, 255, 0.45);
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Loading animation */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hourglass {
+  display: inline-block;
+  animation: rotateHourglass 0.8s infinite linear;
+}
+
+@keyframes rotateHourglass {
+  0%   { transform: rotate(0deg); }
+  50%  { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* AI Summary Card */
+.ai-summary-card {
+  margin-top: 25px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 14px;
+  border-left: 6px solid #4a67ff;
+  box-shadow:
+    0 0 10px rgba(74, 103, 255, 0.3),
+    0 0 25px rgba(74, 103, 255, 0.15);
+  animation: fadeIn 0.4s ease;
+}
+
+.ai-summary-card h3 {
+  color: #4a67ff;
+  margin: 0 0 10px;
+}
+
+/* Review cards */
+.review-item {
+  margin-top: 25px;
+  padding: 16px;
+  background: #fafaff;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+  animation: fadeIn 0.25s ease;
+}
+
+/* Stars */
+.stars {
+  margin: 6px 0 10px;
+}
+
+.stars span {
+  font-size: 20px;
+  color: #dcdcdc;
+}
+
+.stars span.filled {
+  color: #ffcc00;
+}
+
+/* Fade animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
