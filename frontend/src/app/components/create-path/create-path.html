@@ -1,0 +1,50 @@
+<!-- Modal de connexion -->
+<div class="login-modal" (click)="closeLoginModal()">
+  <div class="login-container" (click)="$event.stopPropagation()">
+    <!-- Header avec bouton fermer -->
+    <div class="login-header-top">
+      <h2>🔐 Connexion</h2>
+      <button type="button" class="btn-close-modal" (click)="closeLoginModal()" title="Fermer">
+        ✕
+      </button>
+    </div>
+
+    <!-- Header -->
+    <div class="login-header">
+      <p>Accédez à votre compte Plan & Go</p>
+    </div>
+
+    <!-- Formulaire -->
+    <form (ngSubmit)="createPlan()" class="login-form">
+      <!-- City -->
+      <div class="form-group">
+        <label for="city">City</label>
+        <input id="city" type="city" [(ngModel)]="city" name="city" placeholder="city" required [disabled]="loading()">
+      </div>
+
+      <div class="form-group">
+        <label for="from">from </label>
+        <input id="from" type="date" [(ngModel)]="from" name="from" placeholder="from" required [disabled]="loading()">
+      </div>
+
+      <div class="form-group">
+        <label for="to">to</label>
+        <input id="to" type="date" [(ngModel)]="to" name="to" placeholder="to" required [disabled]="loading()">
+      </div>
+
+
+
+      <!-- Message d'erreur -->
+      <div *ngIf="error()" class="error-message">
+        ❌ {{ error() }}
+      </div>
+
+      <!-- Bouton de connexion -->
+      <button type="submit" class="btn-login" [disabled]="loading()">
+        {{ loading() ? 'Connexion en cours...' : 'Se connecter' }}
+      </button>
+    </form>
+
+
+  </div>
+</div>

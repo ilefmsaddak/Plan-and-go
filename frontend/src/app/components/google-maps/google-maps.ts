@@ -29,7 +29,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
   private markers: google.maps.Marker[] = [];
   private mapReady: boolean = false;
 
-  constructor(private placesService: PlacesService) {}
+  constructor(private placesService: PlacesService) { }
 
   // Déplacer les icônes dans une méthode pour éviter l'initialisation prématurée
   private getMarkerIcons() {
@@ -89,7 +89,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
     // Lorsque les places changent, les ajouter à la carte
     if (changes['places']) {
       const newPlaces = changes['places'].currentValue || [];
-      
+
       if (this.mapReady && this.isGoogleMapsLoaded()) {
         // Map est prête, ajouter les marqueurs immédiatement
         console.log('Places received (map ready):', newPlaces.length);
@@ -102,7 +102,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
         const placesToAdd = newPlaces;
         let retries = 0;
         const maxRetries = 30; // 30 tentatives × 100ms = 3 secondes max
-        
+
         const tryAddMarkers = () => {
           retries++;
           if (this.mapReady && this.isGoogleMapsLoaded()) {
@@ -117,7 +117,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
             console.error('Map failed to initialize after 3 seconds');
           }
         };
-        
+
         tryAddMarkers();
       }
     }
@@ -181,8 +181,8 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
       });
 
       // Créer une info window riche avec image
-      const photoUrl = place.photos && place.photos.length > 0 
-        ? place.photos[0] 
+      const photoUrl = place.photos && place.photos.length > 0
+        ? place.photos[0]
         : 'https://via.placeholder.com/300x200?text=No+Image';
 
       const infoWindow = new google.maps.InfoWindow({
@@ -507,6 +507,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
       });
 
       // Initialiser le PlacesService après la création de la map
+      console.log("initalize service")
       this.placesService.initializeService(this.map);
 
       // Centrer la carte sur la localisation initiale
@@ -532,7 +533,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
       }
 
       this.initPlacesAutocomplete();
-      
+
       // Marquer la carte comme prête
       this.mapReady = true;
     } catch (error) {

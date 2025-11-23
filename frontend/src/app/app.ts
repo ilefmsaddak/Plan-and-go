@@ -1,13 +1,28 @@
-import { Component, signal } from '@angular/core';
-import {RouterModule, RouterOutlet} from '@angular/router';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterOutlet, Router } from '@angular/router';
+import { NotificationsComponent } from './components/notifications/notifications';
+import { AuthBannerComponent } from './components/auth-banner/auth-banner';
+
+
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
-  standalone:true,
-  imports: [RouterModule],
+  standalone: true,
+  imports: [CommonModule, RouterOutlet, NotificationsComponent, AuthBannerComponent],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.scss',
 })
 export class App {
-  protected readonly title = signal('myp');
+  constructor(private authService: AuthService, private router: Router) { }
+
+  isAuthenticated() {
+    return this.authService.isAuthenticated();
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/']);
+  }
 }

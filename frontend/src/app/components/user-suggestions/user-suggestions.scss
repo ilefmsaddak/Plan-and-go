@@ -1,0 +1,225 @@
+.user-suggestions-container {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+
+  .suggestions-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #050505;
+    }
+  }
+
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+  }
+
+  .error {
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 8px;
+    padding: 12px;
+    color: #c33;
+    margin-bottom: 15px;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  // Carousel horizontal
+  .users-carousel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin: 0 -16px;
+    padding: 0 16px;
+
+    .carousel-wrapper {
+      display: flex;
+      gap: 12px;
+      min-width: min-content;
+    }
+  }
+
+  // Carte verticale (style Facebook)
+  .user-card-vertical {
+    display: flex;
+    flex-direction: column;
+    width: 160px;
+    min-width: 160px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-color: #d1d5db;
+    }
+
+    .card-image {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+
+      .avatar-large {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 24px;
+        border: 2px solid white;
+      }
+
+      .btn-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.7);
+        }
+      }
+    }
+
+    .card-content {
+      padding: 12px;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+
+      .username {
+        margin: 0 0 4px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #050505;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .followers {
+        margin: 0;
+        font-size: 12px;
+        color: #65676b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .btn-add-friend,
+    .btn-added {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      background: #0a66c2;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-top: 1px solid #e5e7eb;
+
+      &:hover {
+        background: #084298;
+      }
+
+      &:active {
+        transform: scale(0.98);
+      }
+    }
+
+    .btn-added {
+      background: #e4e6eb;
+      color: #050505;
+
+      &:hover {
+        background: #d0d2d7;
+      }
+    }
+  }
+
+  // Voir tout
+  .see-all {
+    text-align: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+
+    a {
+      color: #0a66c2;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .no-users {
+    text-align: center;
+    padding: 30px 20px;
+    color: #999;
+
+    p {
+      margin: 0;
+    }
+  }
+}
+
+/* Scrollbar personnalisée pour le carousel */
+.users-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.users-carousel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.users-carousel::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+
+  &:hover {
+    background: #999;
+  }
+}

@@ -3,15 +3,21 @@
     <h3>Place Bucket</h3>
   </div>
 
+  <!--div> plan : </div>
+  <select [(ngModel)]="selectedPlan">
+    <option value="" disabled>Select a city</option>
+    <option *ngFor="let plan of plans" [value]="plan">
+      {{ plan.name }}
+    </option>
+  </select-->
+
+
+
   <!-- FAVORITES LIST -->
   <div class="content">
-    <ul class="favorites-list"
-        cdkDropList
-        id="favorites"
-        [cdkDropListData]="favorites"
-        [cdkDropListConnectedTo]="favoritesConnectedTo"
-        (cdkDropListDropped)="onDropToFavorites($event)">
-      
+    <ul class="favorites-list" cdkDropList id="favorites" [cdkDropListData]="favorites"
+      [cdkDropListConnectedTo]="favoritesConnectedTo" (cdkDropListDropped)="onDropToFavorites($event)">
+
       <li *ngFor="let place of favorites" cdkDrag>
         <!-- DRAG HANDLE -->
         <span cdkDragHandle class="drag-handle">
@@ -28,24 +34,18 @@
 
   <!-- DYNAMIC DAYS -->
   <div class="bucket-content">
-    <div class="day-zone"
-         *ngFor="let day of days; let i = index"
-         cdkDropList
-         id="day-{{i}}"
-         [cdkDropListData]="day.places"
-         [cdkDropListConnectedTo]="['favorites']"
-         (cdkDropListDropped)="onDropToDay($event, i)">
-      
+    <div class="day-zone" *ngFor="let day of days; let i = index" cdkDropList id="day-{{i}}"
+      [cdkDropListData]="day.places" [cdkDropListConnectedTo]="['favorites']"
+      (cdkDropListDropped)="onDropToDay($event, i)">
+
       <div class="trip-item">
         <span class="date-label">{{ day.date }}</span>
         <span class="temp-label">{{ day.temp }}</span>
       </div>
 
       <div class="content">
-        <div class="day-place"
-             *ngFor="let p of day.places"
-             cdkDrag>
-          
+        <div class="day-place" *ngFor="let p of day.places" cdkDrag>
+
           <!-- DRAG HANDLE -->
           <span cdkDragHandle class="drag-handle">
             <span class="icon">{{ typeIcons[p.type] || '❓' }}</span>

@@ -4,9 +4,12 @@ from datetime import datetime
 from django.http import JsonResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
-from bucket.models import Trip, Place, ItineraryItem
+
+
 import traceback
 import sys
+
+from social.models import Plan, ItineraryDay, Place
 
 DATE_FORMATS = ["%d/%m/%Y", "%Y-%m-%d"]
 
@@ -36,7 +39,7 @@ def save_itinerary_view(request):
         if not isinstance(days, list) or len(days) == 0:
             return JsonResponse({"status": "error", "message": "Missing or invalid 'days' (must be non-empty list)"}, status=400)
 
-        trip = Trip.objects(id=trip_id).first()
+        trip = Plan.objects(id=trip_id).first()
         if not trip:
             return JsonResponse({"status": "error", "message": "Trip not found"}, status=404)
 
@@ -74,7 +77,7 @@ def save_itinerary_view(request):
                 # Only id + name because your Place model does not have 'type'
                 place_objs.append(Place(id=str(pid), name=str(pname)))
 
-            itinerary_item = ItineraryItem(
+            itinerary_item = ItineraryDay(
                 day_index=i,
                 date=parsed_date,
                 places=place_objs

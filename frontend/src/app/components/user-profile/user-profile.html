@@ -1,0 +1,710 @@
+<div class="profile-container">
+  <!-- Loading -->
+  <div *ngIf="loading()" class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement du profil...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="!loading() && error()" class="error-state">
+    <p>{{ error() }}</p>
+  </div>
+
+  <!-- Profile Content -->
+  <div *ngIf="!loading() && !error() && profile()" class="profile-content">
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <div class="profile-header-top">
+        <!-- Back Button for other profiles -->
+        <button *ngIf="!isOwnProfile()" class="btn-back" (click)="goBack()" title="Retour">
+          ← Retour
+        </button>
+
+        <div class="profile-avatar">{{ profile()!.username.charAt(0).toUpperCase() }}</div>
+        <div class="profile-info">
+          <h1>{{ profile()!.username }}</h1>
+          <p class="bio">{{ profile()!.bio || 'Pas de bio' }}</p>
+          <div class="stats">
+            <div class="stat">
+              <span class="stat-value">{{ profile()!.publicPlans.length }}</span>
+              <span class="stat-label">Plans publics</span>
+            </div>
+            <div class="stat" (click)="showFollowers()" style="cursor: pointer;">
+              <span class="stat-value">{{ profile()!.followers }}</span>
+              <span class="stat-label">Abonnés</span>
+            </div>
+            <div class="stat" (click)="showFollowing()" style="cursor: pointer;">
+              <span class="stat-value">{{ profile()!.following }}</span>
+              <span class="stat-label">Abonnements</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons Container -->
+      <div class="profile-actions">
+        <!-- Create Itinerary Button (only for own profile) -->
+        <button *ngIf="isOwnProfile()" class="btn-create-itinerary" (click)="createItinerary()"
+          title="Créer un nouvel itinéraire">
+          ➕ Créer itinéraire
+        </button>
+
+        <!-- Edit Profile Button (only for own profile) -->
+        <button *ngIf="isOwnProfile()" class="btn-edit-profile" (click)="openEditProfileModal()"
+          title="Éditer le profil">
+          ✏️ Éditer le profil
+        </button>
+
+        <!-- Logout Button (only for own profile) -->
+        <button *ngIf="isOwnProfile()" class="btn-logout-profile" (click)="logout()" title="Se déconnecter">
+          🚪 Déconnexion
+        </button>
+
+        <!-- Follow Button (visible si c'est un autre profil) -->
+        <button *ngIf="!isOwnProfile()" class="btn-follow" [class.following]="isFollowing()" (click)="toggleFollow()"
+          [disabled]="followLoading()">
+          {{ isFollowing() ? '✓ Suivi' : '+ Suivre' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs for Plans (hidden for other profiles) -->
+    <div class="tabs" *ngIf="isOwnProfile()">
+      <button class="tab-btn" [class.active]="activeTab() === 'public'" (click)="switchTab('public')">
+        📍 Plans Publics ({{ profile()!.publicPlans.length }})
+      </button>
+      <button class="tab-btn" [class.active]="activeTab() === 'private'" (click)="switchTab('private')">
+        🔒 Plans Privés ({{ privatePlans().length }})
+      </button>
+    </div>
+
+    <!-- Publications for other profiles -->
+    <div *ngIf="!isOwnProfile() && publications().length > 0" class="publications-section">
+      <h2 class="section-title">📰 Publications de {{ profile()!.username }}</h2>
+      <div class="publications-list">
+        <div *ngFor="let pub of publications()" class="publication-card" [id]="'pub-' + pub.id">
+          <!-- Publication Header -->
+          <div class="publication-header">
+            <div class="publication-author">
+              <div class="avatar-wrapper">
+                <div class="avatar">{{ (pub.author || 'V').charAt(0).toUpperCase() }}</div>
+                <div class="avatar-glow"></div>
+              </div>
+              <div class="author-info">
+                <h3 class="username">{{ pub.author || 'Voyageur' }}</h3>
+                <p class="date">{{ pub.createdAt ? formatDate(pub.createdAt) : '' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Publication Description -->
+          <div class="publication-content">
+            <p class="publication-description" *ngIf="pub.description">{{ pub.description }}</p>
+          </div>
+
+          <!-- Plan Snapshot -->
+          <div class="plan-snapshot" *ngIf="pub.planSnapshot">
+            <div class="snapshot-header">
+              <h4>📍 {{ pub.planSnapshot.city || 'Destination' }}</h4>
+            </div>
+            <div class="snapshot-details">
+              <div class="snapshot-item">
+                <span class="snapshot-label">📅 Dates:</span>
+                <span class="snapshot-value">
+                  {{ pub.planSnapshot.fromDate ? (pub.planSnapshot.fromDate | slice:0:10) : '?' }}
+                  à
+                  {{ pub.planSnapshot.toDate ? (pub.planSnapshot.toDate | slice:0:10) : '?' }}
+                </span>
+              </div>
+              <div class="snapshot-item">
+                <span class="snapshot-label">📆 Durée:</span>
+                <span class="snapshot-value">{{ pub.planSnapshot.daysCount || 0 }} jour(s)</span>
+              </div>
+            </div>
+
+            <!-- Places Bucket - Lieux Visités -->
+            <div class="places-bucket-section"
+              *ngIf="pub.planSnapshot.placeBucket && pub.planSnapshot.placeBucket.length > 0">
+              <div class="places-bucket-header">
+                <h5 class="places-bucket-title">📍 LIEUX VISITÉS ({{ pub.planSnapshot.placeBucket.length }})</h5>
+              </div>
+              <div class="places-bucket-grid">
+                <div *ngFor="let place of pub.planSnapshot.placeBucket" class="place-bucket-card">
+                  <div class="place-bucket-icon">📍</div>
+                  <div class="place-bucket-content">
+                    <div class="place-bucket-name">{{ place.name || place.title || 'Lieu' }}</div>
+                    <div class="place-bucket-district" *ngIf="place.district">{{ place.district }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Itinerary -->
+            <div class="itinerary-section" *ngIf="pub.planSnapshot.itinerary && pub.planSnapshot.itinerary.length > 0">
+              <h5 class="itinerary-title">🗓️ Itinéraire Détaillé</h5>
+              <div class="itinerary-list">
+                <div *ngFor="let day of pub.planSnapshot.itinerary; let i = index" class="day-item">
+                  <div class="day-header">
+                    <span class="day-badge">Jour {{ (day.dayIndex || i) + 1 }}</span>
+                    <span class="day-date" *ngIf="day.date">{{ day.date | slice:0:10 }}</span>
+                  </div>
+
+                  <!-- Places for this day -->
+                  <div class="day-places" *ngIf="day.places && day.places.length > 0">
+                    <div class="places-label">Lieux visités:</div>
+                    <div class="places-in-day">
+                      <div *ngFor="let placeId of day.places" class="place-in-day">
+                        <span class="place-marker">📍</span>
+                        <span class="place-name-day">{{ getPlaceName(placeId, pub) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p class="day-description" *ngIf="day.description">{{ day.description }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Publication Stats -->
+          <div class="publication-stats">
+            <span class="stat-item clickable" (click)="showPublicationLikes(pub)" title="Voir les likes">
+              {{ pub.isLiked ? '❤️' : '🤍' }} {{ pub.likes || 0 }}
+            </span>
+            <span class="stat-item clickable" (click)="showPublicationComments(pub)" title="Voir les commentaires">
+              💬 {{ pub.commentsCount || 0 }}
+            </span>
+            <span class="stat-item clickable" (click)="showPublicationClones(pub)" title="Voir les clones">
+              📋 {{ pub.clonedBy || 0 }}
+            </span>
+          </div>
+
+          <!-- Publication Actions -->
+          <div class="publication-actions">
+            <button class="btn-action btn-like" [class.liked]="pub.isLiked" [disabled]="!currentUserId()"
+              (click)="likePublication(pub)" title="Aimer cette publication">
+              {{ pub.isLiked ? '❤️ Aimé' : '❤️ Aimer' }}
+            </button>
+            <button class="btn-action btn-comment" [disabled]="!currentUserId()" (click)="showPublicationComments(pub)"
+              title="Commenter cette publication">
+              💬 Commenter
+            </button>
+            <button class="btn-action btn-clone" [disabled]="!currentUserId()" (click)="clonePublication(pub)"
+              title="Cloner ce plan">
+              📋 Cloner
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty publications message -->
+    <div *ngIf="!isOwnProfile() && publications().length === 0" class="empty-publications">
+      <p>Aucune publication pour le moment.</p>
+    </div>
+
+    <!-- Plans Grid -->
+    <div class="plans-grid-professional" *ngIf="isOwnProfile()">
+      <div *ngIf="getDisplayPlans().length === 0" class="empty-plans">
+        <p>Aucun plan {{ activeTab() === 'public' ? 'public' : 'privé' }} pour le moment.</p>
+      </div>
+
+      <div *ngFor="let plan of getDisplayPlans()" class="plan-card-professional">
+        <!-- Plan Header -->
+        <div class="plan-header">
+          <div class="plan-title-section">
+            <h3 class="plan-title">📍 {{ plan.city || 'Plan' }}</h3>
+            <p class="plan-description" *ngIf="plan.description">{{ plan.description }}</p>
+          </div>
+          <span class="plan-status" [class.public]="activeTab() === 'public'"
+            [class.private]="activeTab() === 'private'">
+            {{ activeTab() === 'public' ? '🌍 Public' : '🔒 Privé' }}
+          </span>
+        </div>
+
+        <!-- Plan Details -->
+        <div class="plan-details">
+          <div class="detail-item">
+            <span class="detail-label">📅 Dates</span>
+            <span class="detail-value">{{ plan.fromDate | date: 'dd MMM' }} → {{ plan.toDate | date: 'dd MMM yyyy'
+              }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">📍 Lieux</span>
+            <span class="detail-value">{{ plan.placesCount || 0 }} lieux</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">📋 Jours</span>
+            <span class="detail-value">{{ plan.daysCount || 0 }} jours</span>
+          </div>
+        </div>
+
+
+        <!-- Plan Actions -->
+        <div class="plan-actions-professional">
+          <!-- For public plans -->
+          <button *ngIf="activeTab() === 'public'" class="btn-action btn-view" (click)="viewPlan(plan)"
+            title="Voir le plan">
+            👁️ Voir
+          </button>
+
+          <!-- For public plans - Unshare button -->
+          <button *ngIf="activeTab() === 'public'" class="btn-action btn-unshare" (click)="unsharePlan(plan)"
+            title="Annuler le partage">
+            🔄 Annuler le partage
+          </button>
+
+          <!-- For private plans - Share button -->
+          <button *ngIf="activeTab() === 'private'" class="btn-action btn-share" (click)="openSharePlanModal(plan)"
+            title="Partager ce plan">
+            📤 Partager
+          </button>
+
+          <!-- View button for private plans -->
+          <button *ngIf="activeTab() === 'private'" class="btn-action btn-view" (click)="viewPlan(plan)"
+            title="Voir le plan">
+            👁️ Voir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Publications Section (Own Profile) - Below Plans -->
+    <div class="publications-section-own" *ngIf="isOwnProfile()">
+      <div class="section-header">
+        <h2>📰 Mes Publications</h2>
+      </div>
+
+      <div *ngIf="publications().length === 0" class="empty-state">
+        <p>Aucune publication pour le moment. Partagez vos plans pour créer des publications!</p>
+      </div>
+
+      <div *ngIf="publications().length > 0" class="publications-grid-own">
+        <div *ngFor="let pub of publications()" class="publication-card-full" [id]="'pub-' + pub.id">
+          <!-- Publication Header -->
+          <div class="publication-header">
+            <div class="publication-author">
+              <div class="avatar-wrapper">
+                <div class="avatar">{{ (pub.author || 'V').charAt(0).toUpperCase() }}</div>
+              </div>
+              <div class="author-info">
+                <h3 class="username">{{ pub.author || 'Voyageur' }}</h3>
+                <p class="date">{{ pub.createdAt ? formatDate(pub.createdAt) : '' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Publication Description -->
+          <div class="publication-content">
+            <p class="publication-description" *ngIf="pub.description">{{ pub.description }}</p>
+          </div>
+
+          <!-- Plan Snapshot -->
+          <div *ngIf="pub.planSnapshot" class="plan-snapshot">
+            <div class="snapshot-header">
+              <h4>📍 {{ pub.planSnapshot.city }}</h4>
+              <span class="duration">{{ pub.planSnapshot.daysCount || 0 }} jours</span>
+            </div>
+            <div class="snapshot-dates">
+              <span>📅 {{ pub.planSnapshot.fromDate | date: 'dd MMM yyyy' }}</span>
+              <span>→</span>
+              <span>{{ pub.planSnapshot.toDate | date: 'dd MMM yyyy' }}</span>
+            </div>
+          </div>
+
+          <!-- Places Bucket - Lieux Visités (Professional Grid) -->
+          <div class="places-bucket-section"
+            *ngIf="pub.planSnapshot?.placeBucket && pub.planSnapshot.placeBucket.length > 0">
+            <div class="places-bucket-header">
+              <h5 class="places-bucket-title">📍 LIEUX VISITÉS ({{ pub.planSnapshot.placeBucket.length }})</h5>
+            </div>
+            <div class="places-bucket-grid">
+              <div *ngFor="let place of pub.planSnapshot.placeBucket" class="place-bucket-card">
+                <div class="place-bucket-icon">📍</div>
+                <div class="place-bucket-content">
+                  <div class="place-bucket-name">{{ place.name || place.title || 'Lieu' }}</div>
+                  <div class="place-bucket-district" *ngIf="place.district">{{ place.district }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Itinerary Section -->
+          <div *ngIf="pub.planSnapshot?.itinerary && pub.planSnapshot.itinerary.length > 0" class="itinerary-section">
+            <h5 class="section-title">📋 Itinéraire</h5>
+            <div class="itinerary-list">
+              <div *ngFor="let day of pub.planSnapshot.itinerary" class="itinerary-day">
+                <div class="day-header">
+                  <span class="day-badge">Jour {{ day.dayIndex + 1 }}</span>
+                  <span class="day-date">{{ day.date | date: 'dd MMM' }}</span>
+                </div>
+                <div *ngIf="day.places && day.places.length > 0" class="day-places">
+                  <span *ngFor="let placeId of day.places" class="day-place">{{ getPlaceName(placeId, pub) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Publication Stats -->
+          <div class="publication-stats-interactive">
+            <span class="stat-badge clickable" (click)="showPublicationLikes(pub)" title="Voir les likes">
+              ❤️ {{ pub.likes || 0 }}
+            </span>
+            <span class="stat-badge clickable" (click)="showPublicationComments(pub)" title="Voir les commentaires">
+              💬 {{ pub.commentsCount || 0 }}
+            </span>
+            <span class="stat-badge clickable" (click)="showPublicationClones(pub)" title="Voir les clones">
+              📋 {{ pub.clonedBy || 0 }}
+            </span>
+          </div>
+
+          <!-- Publication Actions -->
+          <div class="publication-actions">
+            <button class="btn-action btn-like" [class.liked]="pub.isLiked" (click)="likePublication(pub)"
+              title="Aimer cette publication">
+              {{ pub.isLiked ? '❤️ Aimé' : '🤍 Aimer' }}
+            </button>
+            <button class="btn-action btn-comment" (click)="showPublicationComments(pub)" title="Commenter">
+              💬 Commenter
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Share Plan Modal -->
+    <div *ngIf="showShareModal()" class="modal-overlay" (click)="closeShareModal()">
+      <div class="modal-content share-plan-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>📤 Partager mon plan</h2>
+          <button class="btn-close-modal" (click)="closeShareModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <form (ngSubmit)="createPublicationFromPlan()" #shareForm="ngForm">
+            <div class="form-group">
+              <label for="pubDescription">Description de la publication</label>
+              <textarea id="pubDescription" [(ngModel)]="shareModalData.description" name="description"
+                class="form-textarea" placeholder="Décrivez votre plan et ce qui le rend spécial..."
+                rows="5"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save" [disabled]="shareLoading()">
+                {{ shareLoading() ? '⏳ Partage en cours...' : '✅ Créer la publication' }}
+              </button>
+              <button type="button" class="btn-cancel" (click)="closeShareModal()">
+                Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Followers/Following Modal -->
+    <div *ngIf="showFollowersModal()" class="modal-overlay" (click)="closeFollowersModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ followersModalType() === 'followers' ? 'Abonnés' : 'Abonnements' }}</h2>
+          <button class="btn-close-modal" (click)="closeFollowersModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div *ngIf="followersList().length === 0" class="empty-list">
+            <p>Aucun {{ followersModalType() === 'followers' ? 'abonné' : 'abonnement' }}</p>
+          </div>
+          <div *ngFor="let userId of followersList()" class="follower-item">
+            <div class="follower-info">
+              <div class="follower-avatar">{{ getFollowerUsername(userId).charAt(0).toUpperCase() }}</div>
+              <span class="follower-name">{{ getFollowerUsername(userId) }}</span>
+            </div>
+            <button *ngIf="isOwnProfile()" class="btn-remove-follower" (click)="removeFollower(userId)" title="Retirer">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comments Modal -->
+    <div *ngIf="showCommentsModal()" class="modal-overlay" (click)="closeCommentsModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>💬 Commentaires - {{ selectedPlanTitle() }}</h2>
+          <button class="btn-close-modal" (click)="closeCommentsModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Add Comment Form -->
+          <div class="add-comment-form">
+            <input type="text" class="comment-input" placeholder="Ajouter un commentaire..."
+              [(ngModel)]="newCommentText" (keyup.enter)="addCommentToModal()">
+            <button class="send-btn" (click)="addCommentToModal()"
+              [disabled]="!newCommentText || newCommentText.trim() === ''">
+              Envoyer
+            </button>
+          </div>
+
+          <!-- Comments List -->
+          <div class="comments-list">
+            <div *ngIf="selectedPlanComments().length === 0" class="empty-list">
+              <p>Aucun commentaire pour le moment</p>
+            </div>
+            <div *ngFor="let comment of selectedPlanComments()" class="comment-item">
+              <div class="comment-author">
+                <strong>{{ comment.author }}</strong>
+                <span class="comment-date">{{ comment.createdAt | date:'short' }}</span>
+              </div>
+              <p class="comment-text">{{ comment.text }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Publication Likes Modal -->
+    <div *ngIf="showPublicationLikesModal()" class="modal-overlay" (click)="closePublicationLikesModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>❤️ Likes - {{ selectedPublicationTitle() }}</h2>
+          <button class="btn-close-modal" (click)="closePublicationLikesModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div *ngIf="selectedPublicationLikes().length === 0" class="empty-list">
+            <p>Aucun like pour le moment</p>
+          </div>
+          <div *ngIf="selectedPublicationLikes().length > 0" class="likes-list">
+            <p class="likes-count">{{ selectedPublicationLikes().length }} personne(s) a/ont aimé cette publication</p>
+            <div *ngFor="let username of selectedPublicationLikes()" class="like-item">
+              <div class="like-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+              <span class="like-username">{{ username }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Publication Comments Modal -->
+    <div *ngIf="showPublicationCommentsModal()" class="modal-overlay" (click)="closePublicationCommentsModal()">
+      <div class="modal-content comments-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>💬 Commentaires</h2>
+          <button class="btn-close-modal" (click)="closePublicationCommentsModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Comments List -->
+          <div *ngIf="selectedPublicationComments().length === 0" class="empty-list">
+            <p>Aucun commentaire pour le moment. Soyez le premier à commenter!</p>
+          </div>
+          <div *ngIf="selectedPublicationComments().length > 0" class="comments-list">
+            <div *ngFor="let comment of selectedPublicationComments()" class="comment-item">
+              <!-- Comment Header -->
+              <div class="comment-header">
+                <div class="comment-author-info">
+                  <div class="author-avatar">{{ (comment.author || 'U').charAt(0).toUpperCase() }}</div>
+                  <div class="author-details">
+                    <strong class="author-name">{{ comment.author || 'Utilisateur' }}</strong>
+                    <span class="comment-date">{{ comment.createdAt ? formatDate(comment.createdAt) : '' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Comment Content -->
+              <p class="comment-text">{{ comment.text }}</p>
+
+              <!-- Reactions Display -->
+              <div class="comment-reactions-display" *ngIf="comment.reactions && comment.reactions.length > 0">
+                <div class="reactions-container">
+                  <span *ngFor="let reaction of comment.reactions" class="reaction-badge">
+                    {{ reaction.type }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Replies -->
+              <div class="replies-container" *ngIf="comment.replies && comment.replies.length > 0">
+                <div *ngFor="let reply of comment.replies" class="reply-item">
+                  <div class="reply-header">
+                    <div class="reply-author-info">
+                      <div class="reply-avatar">{{ (reply.author || 'U').charAt(0).toUpperCase() }}</div>
+                      <div class="reply-details">
+                        <strong class="reply-author-name">{{ reply.author }}</strong>
+                        <span class="reply-date">{{ formatDate(reply.createdAt) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="reply-text">{{ reply.text }}</p>
+                </div>
+              </div>
+
+              <!-- Comment Actions -->
+              <div class="comment-actions">
+                <button class="btn-comment-action btn-react" (click)="showReactionEmojis(comment.id)"
+                  title="Ajouter une réaction">
+                  😊 Réagir
+                </button>
+                <button class="btn-comment-action btn-reply" (click)="toggleReplyForm(comment.id)"
+                  [class.active]="activeReplyCommentId() === comment.id" title="Répondre à ce commentaire">
+                  💬 Répondre
+                </button>
+              </div>
+
+              <!-- Reaction Menu -->
+              <div class="reaction-menu" *ngIf="activeReactionCommentId() === comment.id">
+                <button *ngFor="let emoji of reactionEmojis" class="reaction-btn"
+                  (click)="addPublicationReaction(selectedPublication(), comment, emoji)">
+                  {{ emoji }}
+                </button>
+              </div>
+
+              <!-- Reply Form -->
+              <div class="reply-form-container" *ngIf="activeReplyCommentId() === comment.id">
+                <div class="reply-form">
+                  <div class="reply-form-header">
+                    <span class="reply-to-label">Répondre à <strong>{{ comment.author }}</strong></span>
+                  </div>
+                  <div class="reply-form-input-group">
+                    <input type="text" [(ngModel)]="replyText[comment.id]" placeholder="Écrire votre réponse..."
+                      class="reply-input">
+                    <div class="reply-form-buttons">
+                      <button class="btn-reply-submit"
+                        (click)="addPublicationReply(selectedPublication(), comment)">Envoyer</button>
+                      <button class="btn-reply-cancel" (click)="toggleReplyForm(null)">Annuler</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Comment Form -->
+          <div class="add-comment-section">
+            <div class="add-comment-header">
+              <h4>AJOUTER UN COMMENTAIRE</h4>
+            </div>
+            <div class="add-comment">
+              <input type="text" [(ngModel)]="newPublicationCommentText" placeholder="Partager votre avis..."
+                class="comment-input" (keyup.enter)="addPublicationComment()">
+              <button (click)="addPublicationComment()" class="btn-comment-submit"
+                [disabled]="!newPublicationCommentText.trim()">
+                Envoyer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Publication Clones Modal -->
+    <div *ngIf="showPublicationClonesModal()" class="modal-overlay" (click)="closePublicationClonesModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>📋 Clones - {{ selectedPublicationTitle() }}</h2>
+          <button class="btn-close-modal" (click)="closePublicationClonesModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div *ngIf="selectedPublicationClones().length === 0" class="empty-list">
+            <p>Aucun clone pour le moment</p>
+          </div>
+          <div *ngIf="selectedPublicationClones().length > 0" class="clones-list">
+            <p class="clones-count">{{ selectedPublicationClones().length }} personne(s) a/ont cloné cette publication
+            </p>
+            <div *ngFor="let username of selectedPublicationClones()" class="clone-item">
+              <div class="clone-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+              <span class="clone-username">{{ username }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Likes Modal -->
+    <div *ngIf="showLikesModal()" class="modal-overlay" (click)="closeLikesModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>❤️ Likes - {{ selectedPlanTitle() }}</h2>
+          <button class="btn-close-modal" (click)="closeLikesModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div *ngIf="selectedPlanLikes().length === 0" class="empty-list">
+            <p>Aucun like pour le moment</p>
+          </div>
+          <div *ngIf="selectedPlanLikes().length > 0" class="likes-list">
+            <p class="likes-count">{{ selectedPlanLikes().length }} personne(s) a/ont aimé ce plan</p>
+            <div *ngFor="let username of selectedPlanLikes()" class="like-item">
+              <div class="like-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+              <span class="like-username">{{ username }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div *ngIf="showEditProfileModal()" class="modal-overlay" (click)="closeEditProfileModal()">
+      <div class="modal-content edit-profile-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>✏️ Éditer mon profil</h2>
+          <button class="btn-close-modal" (click)="closeEditProfileModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <form (ngSubmit)="saveProfileChanges()" #editForm="ngForm">
+            <!-- Username -->
+            <div class="form-group">
+              <label for="username">Nom d'utilisateur</label>
+              <input type="text" id="username" [(ngModel)]="editProfileData.username" name="username" class="form-input"
+                placeholder="Votre nom d'utilisateur">
+            </div>
+
+            <!-- Bio -->
+            <div class="form-group">
+              <label for="bio">Bio</label>
+              <textarea id="bio" [(ngModel)]="editProfileData.bio" name="bio" class="form-textarea"
+                placeholder="Décrivez-vous..." rows="4"></textarea>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+              <label for="email">📧 Email</label>
+              <input type="email" id="email" [(ngModel)]="editProfileData.email" name="email" class="form-input"
+                placeholder="Votre email">
+            </div>
+
+            <!-- Password Section -->
+            <div class="password-section">
+              <div class="section-title">🔐 Modifier le mot de passe (optionnel)</div>
+
+              <div class="form-group">
+                <label for="currentPassword">Mot de passe actuel</label>
+                <input type="password" id="currentPassword" [(ngModel)]="editProfileData.currentPassword"
+                  name="currentPassword" class="form-input" placeholder="Entrez votre mot de passe actuel">
+              </div>
+
+              <div class="form-group">
+                <label for="newPassword">Nouveau mot de passe</label>
+                <input type="password" id="newPassword" [(ngModel)]="editProfileData.newPassword" name="newPassword"
+                  class="form-input" placeholder="Entrez votre nouveau mot de passe">
+              </div>
+
+              <div class="form-group">
+                <label for="confirmPassword">Confirmer le mot de passe</label>
+                <input type="password" id="confirmPassword" [(ngModel)]="editProfileData.confirmPassword"
+                  name="confirmPassword" class="form-input" placeholder="Confirmez votre nouveau mot de passe">
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn-save" [disabled]="editProfileLoading()">
+                {{ editProfileLoading() ? '⏳ Enregistrement...' : '💾 Enregistrer' }}
+              </button>
+              <button type="button" class="btn-cancel" (click)="closeEditProfileModal()">
+                Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <create-path *ngIf="showCreatePathModal()" (createPathSuccess)="onCreatePathSuccess()" (closeModal)="onCloseLogin()">
+  </create-path>
+</div>

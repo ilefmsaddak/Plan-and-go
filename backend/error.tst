@@ -1,0 +1,1 @@
+"ValidationError (Plan:692364cffc446da52ed22ca9) (Invalid embedded document instance provided to an EmbeddedDocumentField 1.Invalid embedded document instance provided to an EmbeddedDocumentField 2.Invalid embedded document instance provided to an EmbeddedDocumentField: ['itinerary'])"

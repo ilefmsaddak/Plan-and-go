@@ -1,0 +1,73 @@
+<!-- Modal de connexion -->
+<div class="login-modal" (click)="closeLoginModal()">
+  <div class="login-container" (click)="$event.stopPropagation()">
+    <!-- Header avec bouton fermer -->
+    <div class="login-header-top">
+      <h2>🔐 Connexion</h2>
+      <button type="button" class="btn-close-modal" (click)="closeLoginModal()" title="Fermer">
+        ✕
+      </button>
+    </div>
+
+    <!-- Header -->
+    <div class="login-header">
+      <p>Accédez à votre compte Plan & Go</p>
+    </div>
+
+    <!-- Formulaire -->
+    <form (ngSubmit)="login()" class="login-form">
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          [(ngModel)]="email"
+          name="email"
+          placeholder="votre@email.com"
+          required
+          [disabled]="loading()">
+      </div>
+
+      <!-- Mot de passe -->
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <div class="password-input">
+          <input
+            id="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            [disabled]="loading()">
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePasswordVisibility()"
+            [disabled]="loading()">
+            {{ showPassword() ? '👁️' : '👁️‍🗨️' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Message d'erreur -->
+      <div *ngIf="error()" class="error-message">
+        ❌ {{ error() }}
+      </div>
+
+      <!-- Bouton de connexion -->
+      <button
+        type="submit"
+        class="btn-login"
+        [disabled]="loading()">
+        {{ loading() ? 'Connexion en cours...' : 'Se connecter' }}
+      </button>
+    </form>
+
+    <!-- Lien inscription -->
+    <div class="login-footer">
+      <p>Pas encore de compte? <a href="#" (click)="goToRegister(); $event.preventDefault()" class="link-register">Créer un compte</a></p>
+    </div>
+  </div>
+</div>

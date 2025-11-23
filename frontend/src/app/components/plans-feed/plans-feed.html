@@ -1,0 +1,568 @@
+<!-- Plans Feed -->
+<div class="plans-feed">
+  <!-- Header -->
+  <div class="feed-header">
+    <h1>🌍 Accueil - Bons Plans</h1>
+    <p>Découvrez les meilleurs plans de voyage partagés par la communauté</p>
+  </div>
+
+  <!-- Suggestions (horizontal) -->
+  <div class="suggestions-section" *ngIf="currentUserId()">
+    <app-user-suggestions></app-user-suggestions>
+  </div>
+
+  <!-- Plans -->
+  <div class="feed-layout">
+    <main class="feed-main">
+
+  <!-- Barre de recherche par ville (visible si connecté) -->
+  <div *ngIf="currentUserId()" class="search-bar">
+    <div class="search-container">
+      <input
+        type="text"
+        [ngModel]="searchCity()"
+        (ngModelChange)="searchCity.set($event)"
+        (keyup.enter)="searchByCity()"
+        placeholder="🔍 Rechercher par ville..."
+        class="search-input">
+      <button 
+        class="btn-search"
+        (click)="searchByCity()"
+        [disabled]="!searchCity() || searchCity().trim() === ''">
+        Rechercher
+      </button>
+      <button 
+        *ngIf="isSearching()"
+        class="btn-reset"
+        (click)="resetSearch()">
+        Réinitialiser
+      </button>
+    </div>
+  </div>
+
+  <!-- Erreur -->
+  <div *ngIf="error()" class="error-message">
+    ❌ {{ error() }}
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading()" class="loading">
+    <p>Chargement des plans...</p>
+  </div>
+
+  <!-- Publications Section -->
+  <div *ngIf="!loading() && publications().length > 0" class="publications-section">
+    <h2 class="section-title">📰 Publications </h2>
+    <div class="publications-list">
+      <div *ngFor="let pub of publications()" class="publication-card">
+        <!-- Publication Header -->
+        <div class="publication-header">
+          <div class="publication-author" (click)="viewUserProfile(pub.authorId)" style="cursor: pointer;">
+            <div class="avatar-wrapper">
+              <div class="avatar">{{ (pub.author || 'V').charAt(0).toUpperCase() }}</div>
+              <div class="avatar-glow"></div>
+            </div>
+            <div class="author-info">
+              <h3 class="username">{{ pub.author || 'Voyageur' }}</h3>
+              <p class="date">{{ pub.createdAt ? formatDate(pub.createdAt) : '' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Publication Description -->
+        <div class="publication-content">
+          <p class="publication-description" *ngIf="pub.description">{{ pub.description }}</p>
+        </div>
+
+        <!-- Plan Snapshot -->
+        <div class="plan-snapshot" *ngIf="pub.planSnapshot">
+          <div class="snapshot-header">
+            <h4>📍 {{ pub.planSnapshot.city || 'Destination' }}</h4>
+          </div>
+          <div class="snapshot-details">
+            <div class="snapshot-item">
+              <span class="snapshot-label">📅 Dates:</span>
+              <span class="snapshot-value">
+                {{ pub.planSnapshot.fromDate ? (pub.planSnapshot.fromDate | slice:0:10) : '?' }} 
+                à 
+                {{ pub.planSnapshot.toDate ? (pub.planSnapshot.toDate | slice:0:10) : '?' }}
+              </span>
+            </div>
+            <div class="snapshot-item">
+              <span class="snapshot-label">📆 Durée:</span>
+              <span class="snapshot-value">{{ pub.planSnapshot.daysCount || 0 }} jour(s)</span>
+            </div>
+          </div>
+
+          <!-- Places Bucket -->
+          <div class="places-section" *ngIf="pub.planSnapshot.placeBucket && pub.planSnapshot.placeBucket.length > 0">
+            <h5>📌 Lieux visités ({{ pub.planSnapshot.placeBucket.length }})</h5>
+            <div class="places-list">
+              <div *ngFor="let place of pub.planSnapshot.placeBucket" class="place-item">
+                <span class="place-icon">📍</span>
+                <span class="place-name">{{ place.name || place.title || 'Lieu' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Itinerary -->
+          <div class="itinerary-section" *ngIf="pub.planSnapshot.itinerary && pub.planSnapshot.itinerary.length > 0">
+            <h5 class="itinerary-title">🗓️ Itinéraire Détaillé</h5>
+            <div class="itinerary-list">
+              <div *ngFor="let day of pub.planSnapshot.itinerary; let i = index" class="day-item">
+                <div class="day-header">
+                  <span class="day-badge">Jour {{ (day.dayIndex || i) + 1 }}</span>
+                  <span class="day-date" *ngIf="day.date">{{ day.date | slice:0:10 }}</span>
+                </div>
+                
+                <!-- Places for this day -->
+                <div class="day-places" *ngIf="day.places && day.places.length > 0">
+                  <div class="places-label">Lieux visités:</div>
+                  <div class="places-in-day">
+                    <div *ngFor="let place of day.places" class="place-in-day">
+                      <span class="place-marker">📍</span>
+                      <span class="place-name-day">{{ place.name }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <p class="day-description" *ngIf="day.description">{{ day.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Publication Stats -->
+        <div class="publication-stats">
+          <span class="stat-item" (click)="showPublicationLikes(pub)" title="Voir les likes">
+            {{ pub.isLiked ? '❤️' : '🤍' }} {{ pub.likes || 0 }}
+          </span>
+          <span class="stat-item" (click)="showPublicationComments(pub)" title="Voir les commentaires">
+            💬 {{ pub.commentsCount || 0 }}
+          </span>
+          <span class="stat-item" (click)="showPublicationClones(pub)" title="Voir qui a cloné">
+            📋 {{ pub.clonedBy || 0 }}
+          </span>
+        </div>
+
+        <!-- Publication Actions -->
+        <div class="publication-actions">
+          <button 
+            class="btn-action btn-like"
+            [class.liked]="pub.isLiked"
+            [disabled]="!currentUserId()"
+            (click)="likePublication(pub)"
+            [title]="currentUserId() ? 'Aimer cette publication' : 'Connectez-vous pour aimer'">
+            {{ pub.isLiked ? '❤️ Aimé' : '❤️ Aimer' }}
+          </button>
+          <button 
+            class="btn-action btn-comment"
+            [disabled]="!currentUserId()"
+            (click)="showPublicationComments(pub)"
+            [title]="currentUserId() ? 'Commenter cette publication' : 'Connectez-vous pour commenter'">
+            💬 Commenter
+          </button>
+          <button 
+            class="btn-action btn-clone"
+            [disabled]="!currentUserId()"
+            (click)="clonePublication(pub)"
+            [title]="currentUserId() ? 'Cloner ce plan' : 'Connectez-vous pour cloner'">
+            📋 Cloner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plans (Hidden - only show publications) -->
+  <div *ngIf="false && !loading() && plans().length > 0" class="plans-list">
+    <div *ngFor="let plan of plans()" class="plan-card">
+      <!-- Header du plan -->
+      <div class="plan-header">
+        <div class="plan-author" (click)="viewUserProfile(plan.authorId)" style="cursor: pointer;">
+          <div class="avatar-wrapper">
+            <div class="avatar">{{ (plan.author || 'V').charAt(0).toUpperCase() }}</div>
+            <div class="avatar-glow"></div>
+          </div>
+          <div class="author-info">
+            <h3 class="username">{{ plan.author || 'Voyageur' }}</h3>
+            <p class="date">{{ plan.createdAt ? formatDate(plan.createdAt) : '' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenu du plan -->
+      <div class="plan-content">
+        <h2>{{ plan.title }}</h2>
+        <p class="description">{{ plan.description }}</p>
+        
+        <div *ngIf="plan.location" class="location">
+          📍 {{ plan.location }}
+        </div>
+
+        <!-- Plan Details -->
+        <div class="plan-details">
+          <div *ngIf="plan.place_bucket" class="detail-item">
+            <span class="detail-label">📌 Place_bucket:</span>
+            <span class="detail-value">{{ plan.place_bucket }}</span>
+          </div>
+          <div *ngIf="plan.city" class="detail-item">
+            <span class="detail-label">🏙️ Ville:</span>
+            <span class="detail-value">{{ plan.city }}</span>
+          </div>
+          <div *ngIf="plan.from_date || plan.to_date || plan.from || plan.to" class="detail-item">
+            <span class="detail-label">📅 Dates:</span>
+            <span class="detail-value">
+              {{ plan.from_date || plan.from || '?' }} à {{ plan.to_date || plan.to || '?' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plan Stats -->
+      <div class="plan-stats">
+        <span 
+          class="stat-item like-stat"
+          [style.cursor]="currentUserId() ? 'pointer' : 'not-allowed'"
+          [style.opacity]="currentUserId() ? '1' : '0.5'"
+          (click)="showLikesModal(plan)" 
+          title="Voir les likes">
+          {{ plan.isLiked ? '❤️' : '🤍' }} {{ plan.likes || 0 }}
+        </span>
+        <span 
+          class="stat-item comment-stat"
+          [style.cursor]="currentUserId() ? 'pointer' : 'not-allowed'"
+          [style.opacity]="currentUserId() ? '1' : '0.5'"
+          (click)="showComments(plan.id)" 
+          title="Voir les commentaires">
+          💬 {{ plan.commentsCount || 0 }}
+        </span>
+      </div>
+
+      <!-- Plan Actions -->
+      <div class="plan-actions">
+        <!-- Like -->
+        <button 
+          class="btn-action btn-like"
+          [class.liked]="isLikedByUser(plan)"
+          (click)="likePlan(plan)"
+          [disabled]="!currentUserId()"
+          title="Aimer ce plan">
+          {{ isLikedByUser(plan) ? '❤️ Aimé' : '❤️ Aimer' }}
+        </button>
+
+        <!-- Commentaires -->
+        <button 
+          class="btn-action btn-comment"
+          (click)="showComments(plan.id)"
+          [disabled]="!currentUserId()"
+          title="Commenter ce plan">
+          💬 Commenter
+        </button>
+
+        <!-- Clone -->
+        <button 
+          class="btn-action btn-clone"
+          [class.cloned]="isClonedByUser(plan)"
+          (click)="clonePlan(plan)"
+          [disabled]="!currentUserId()"
+          title="Cloner ce plan">
+          📋 {{ isClonedByUser(plan) ? 'Cloné' : 'Cloner' }}
+        </button>
+      </div>
+
+      <!-- Commentaires (affichage conditionnel) -->
+      <div class="plan-comments" *ngIf="expandedPlanId() === plan.id">
+        <div *ngIf="(planComments()[plan.id] || []).length > 0" class="comments-list">
+          <div *ngFor="let comment of planComments()[plan.id]" class="comment">
+            <div class="comment-author">
+              <strong>{{ comment.author_name || comment.author }}</strong>
+              <span class="comment-date">{{ formatDate(comment.created_at || comment.createdAt) }}</span>
+            </div>
+            <p class="comment-text">{{ comment.text }}</p>
+            
+            <!-- Comment Reactions Display -->
+            <div class="comment-reactions-display" *ngIf="commentReactions()[comment.id] && Object.keys(commentReactions()[comment.id]).length > 0">
+              <div class="reactions-container">
+                <span 
+                  *ngFor="let emoji of Object.keys(commentReactions()[comment.id])"
+                  class="reaction-badge"
+                  [title]="emoji">
+                  {{ emoji }} <span class="reaction-count">{{ commentReactions()[comment.id][emoji] }}</span>
+                </span>
+              </div>
+            </div>
+            
+            <!-- Comment Actions -->
+            <div class="comment-actions" *ngIf="currentUserId()">
+              <div class="reaction-menu-wrapper">
+                <button 
+                  class="btn-comment-action btn-react"
+                  (click)="toggleReactionMenu(comment.id)"
+                  title="Réagir au commentaire">
+                   Réagir
+                </button>
+                
+                <!-- Reaction Menu -->
+                <div class="reaction-menu" *ngIf="activeReactionCommentId() === comment.id">
+                  <button 
+                    *ngFor="let emoji of reactionEmojis"
+                    class="reaction-btn"
+                    (click)="addReaction(comment, emoji, plan)"
+                    [title]="emoji">
+                    {{ emoji }}
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                class="btn-comment-action btn-reply"
+                (click)="toggleReplyForm(comment.id)"
+                title="Répondre au commentaire">
+                 Répondre
+              </button>
+            </div>
+            
+            <!-- Show Replies Count Link -->
+            <div class="show-replies-link" *ngIf="commentReplies()[comment.id] && commentReplies()[comment.id].length > 0">
+              <button 
+                class="btn-show-replies"
+                (click)="toggleRepliesDisplay(comment.id)">
+                {{ expandedRepliesCommentId() === comment.id ? 'Masquer' : 'Voir' }} {{ commentReplies()[comment.id].length }} réponse(s)
+              </button>
+            </div>
+
+            <!-- Replies Display -->
+            <div class="replies-container" *ngIf="expandedRepliesCommentId() === comment.id && commentReplies()[comment.id] && commentReplies()[comment.id].length > 0">
+              <div *ngFor="let reply of commentReplies()[comment.id]" class="reply-item">
+                <div class="reply-author">
+                  <strong>{{ reply.author }}</strong>
+                  <span class="reply-date">{{ formatDate(reply.createdAt) }}</span>
+                </div>
+                <p class="reply-text">{{ reply.text }}</p>
+              </div>
+            </div>
+
+            <!-- Reply Form -->
+            <div class="reply-form" *ngIf="activeReplyCommentId() === comment.id">
+              <div class="reply-input-group">
+                <input
+                  type="text"
+                  [(ngModel)]="replyText[comment.id]"
+                  placeholder="Écrire une réponse..."
+                  class="reply-input">
+                <button 
+                  class="btn-reply-submit"
+                  (click)="submitReply(comment, plan)"
+                  [disabled]="!replyText[comment.id] || replyText[comment.id].trim() === ''">
+                  Envoyer
+                </button>
+                <button 
+                  class="btn-reply-cancel"
+                  (click)="toggleReplyForm(null)">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ajouter un commentaire -->
+        <div *ngIf="currentUserId()" class="add-comment">
+          <div class="comment-input-group">
+            <input
+              type="text"
+              [ngModel]="commentText()[plan.id] || ''"
+              (ngModelChange)="updateCommentText(plan.id, $event)"
+              placeholder="Ajouter un commentaire..."
+              class="comment-input">
+            <button 
+              type="button"
+              class="btn-comment-submit"
+              (click)="addComment(plan)"
+              [disabled]="!commentText()[plan.id] || commentText()[plan.id].trim() === ''">
+              Envoyer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+      <!-- Aucun plan -->
+      <div *ngIf="!loading() && plans().length === 0" class="no-plans">
+        <p>Aucun plan disponible pour le moment</p>
+        <p class="hint">Soyez le premier à partager un bon plan!</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Publication Comments Modal -->
+  <div *ngIf="showPublicationCommentsModal()" class="modal-overlay" (click)="showPublicationCommentsModal.set(false)">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💬 Commentaires</h2>
+        <button class="btn-close-modal" (click)="showPublicationCommentsModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="(publicationComments()[selectedPublicationId() || ''] || []).length === 0" class="empty-list">
+          <p>Aucun commentaire pour le moment</p>
+        </div>
+        <div *ngIf="(publicationComments()[selectedPublicationId() || ''] || []).length > 0" class="comments-list">
+          <div *ngFor="let comment of publicationComments()[selectedPublicationId() || '']" class="comment-item">
+            <!-- Comment Header -->
+            <div class="comment-header">
+              <div class="comment-author-info">
+                <div class="author-avatar">{{ (comment.author || 'U').charAt(0).toUpperCase() }}</div>
+                <div class="author-details">
+                  <strong class="author-name">{{ comment.author }}</strong>
+                  <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Comment Content -->
+            <p class="comment-text">{{ comment.text }}</p>
+            
+            <!-- Reactions Display -->
+            <div class="comment-reactions-display" *ngIf="publicationCommentReactions()[comment.id] && Object.keys(publicationCommentReactions()[comment.id]).length > 0">
+              <div class="reactions-container">
+                <span *ngFor="let emoji of Object.keys(publicationCommentReactions()[comment.id])" class="reaction-badge">
+                  {{ emoji }} <span class="reaction-count">{{ publicationCommentReactions()[comment.id][emoji] }}</span>
+                </span>
+              </div>
+            </div>
+            
+            <!-- Replies -->
+            <div class="replies-container" *ngIf="publicationCommentReplies()[comment.id] && publicationCommentReplies()[comment.id].length > 0">
+              <div *ngFor="let reply of publicationCommentReplies()[comment.id]" class="reply-item">
+                <div class="reply-header">
+                  <div class="reply-author-info">
+                    <div class="reply-avatar">{{ (reply.author || 'U').charAt(0).toUpperCase() }}</div>
+                    <div class="reply-details">
+                      <strong class="reply-author-name">{{ reply.author }}</strong>
+                      <span class="reply-date">{{ formatDate(reply.createdAt) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="reply-text">{{ reply.text }}</p>
+              </div>
+            </div>
+            
+            <!-- Comment Actions -->
+            <div class="comment-actions" *ngIf="currentUserId()">
+              <button class="btn-comment-action btn-react" (click)="showReactionEmojis(comment.id)" title="Ajouter une réaction">
+                😊 Réagir
+              </button>
+              <button class="btn-comment-action btn-reply" (click)="toggleReplyForm(comment.id)" [class.active]="activeReplyCommentId() === comment.id" title="Répondre à ce commentaire">
+                💬 Répondre
+              </button>
+            </div>
+            
+            <!-- Reaction Menu -->
+            <div class="reaction-menu" *ngIf="activeReactionCommentId() === comment.id">
+              <button *ngFor="let emoji of reactionEmojis" class="reaction-btn" (click)="addPublicationReactionWrapper(comment.id, emoji)">
+                {{ emoji }}
+              </button>
+            </div>
+            
+            <!-- Reply Form -->
+            <div class="reply-form-container" *ngIf="activeReplyCommentId() === comment.id">
+              <div class="reply-form">
+                <div class="reply-form-header">
+                  <span class="reply-to-label">Répondre à <strong>{{ comment.author }}</strong></span>
+                </div>
+                <div class="reply-form-input-group">
+                  <input type="text" [(ngModel)]="replyText[comment.id]" placeholder="Écrire votre réponse..." class="reply-input">
+                  <div class="reply-form-buttons">
+                    <button class="btn-reply-submit" (click)="addPublicationReplyWrapper(comment.id)">Envoyer</button>
+                    <button class="btn-reply-cancel" (click)="toggleReplyForm(null)">Annuler</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Add Comment Form -->
+        <div *ngIf="currentUserId()" class="add-comment-section">
+          <div class="add-comment-header">
+            <h4>Ajouter un commentaire</h4>
+          </div>
+          <div class="add-comment">
+            <input type="text" [(ngModel)]="publicationCommentText()[selectedPublicationId() || '']" placeholder="Partager votre avis..." class="comment-input">
+            <button class="btn-comment-submit" (click)="addPublicationComment(publications()[0])">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Publication Likes Modal -->
+  <div *ngIf="showPublicationLikesModal()" class="modal-overlay" (click)="showPublicationLikesModal.set(false)">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>❤️ Likes</h2>
+        <button class="btn-close-modal" (click)="showPublicationLikesModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="(publicationLikes()[selectedPublicationId() || ''] || []).length === 0" class="empty-list">
+          <p>Aucun like pour le moment</p>
+        </div>
+        <div *ngIf="(publicationLikes()[selectedPublicationId() || ''] || []).length > 0" class="likes-list">
+          <p class="likes-count">{{ (publicationLikes()[selectedPublicationId() || ''] || []).length }} personne(s) a/ont aimé</p>
+          <div *ngFor="let like of publicationLikes()[selectedPublicationId() || '']" class="like-item">
+            <div class="like-avatar">{{ (like.username || 'U').charAt(0).toUpperCase() }}</div>
+            <span class="like-username">{{ like.username }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Publication Clones Modal -->
+  <div *ngIf="showPublicationClonesModal()" class="modal-overlay" (click)="showPublicationClonesModal.set(false)">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>📋 Clonages</h2>
+        <button class="btn-close-modal" (click)="showPublicationClonesModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="(publicationClones()[selectedPublicationId() || ''] || []).length === 0" class="empty-list">
+          <p>Aucun clonage pour le moment</p>
+        </div>
+        <div *ngIf="(publicationClones()[selectedPublicationId() || ''] || []).length > 0" class="clones-list">
+          <p class="clones-count">{{ (publicationClones()[selectedPublicationId() || ''] || []).length }} personne(s) a/ont cloné</p>
+          <div *ngFor="let clone of publicationClones()[selectedPublicationId() || '']" class="clone-item">
+            <div class="clone-avatar">{{ (clone.username || 'U').charAt(0).toUpperCase() }}</div>
+            <span class="clone-username">{{ clone.username }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Likes Modal -->
+  <div *ngIf="showLikesModalFlag()" class="modal-overlay" (click)="closeLikesModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>❤️ Likes - {{ selectedPlanForLikes()?.title || 'Plan' }}</h2>
+        <button class="btn-close-modal" (click)="closeLikesModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <ng-container *ngIf="selectedPlanForLikes() as plan">
+          <div *ngIf="!plan.likedBy || plan.likedBy.length === 0" class="empty-list">
+            <p>Aucun like pour le moment</p>
+          </div>
+          <div *ngIf="plan.likedBy && plan.likedBy.length > 0" class="likes-list">
+            <p class="likes-count">{{ plan.likedBy.length }} personne(s) a/ont aimé ce plan</p>
+            <div *ngFor="let username of plan.likedBy" class="like-item">
+              <div class="like-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+              <span class="like-username">{{ username }}</span>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>

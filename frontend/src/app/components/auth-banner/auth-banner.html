@@ -1,0 +1,38 @@
+<!-- Auth Banner (Comme Facebook) -->
+<div *ngIf="isVisible() && !authService.currentUserId()" class="auth-banner">
+  <div class="banner-content">
+    <!-- Icône + Texte -->
+    <div class="banner-left">
+      <div class="banner-icon">🌍</div>
+      <div class="banner-text">
+        <h3>Plan & Go</h3>
+        <p>Partagez vos bons plans de voyage</p>
+      </div>
+    </div>
+
+    <!-- Bouton unique -->
+    <div class="banner-actions">
+      <button class="btn-login" (click)="onLogin()">
+        Se connecter
+      </button>
+      <button class="btn-close" (click)="close()" title="Fermer">
+        ✕
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de connexion -->
+<app-login
+  *ngIf="showLoginModal()"
+  (loginSuccess)="onLoginSuccess()"
+  (showRegisterModal)="onShowRegister()"
+  (closeModal)="onCloseLogin()">
+</app-login>
+
+<!-- Modal d'inscription -->
+<app-register
+  *ngIf="showRegisterModal()"
+  (registerSuccess)="onRegisterSuccess()"
+  (closeModal)="onCloseRegister()">
+</app-register>

@@ -1,0 +1,59 @@
+<div class="user-suggestions-container">
+  <!-- Titre -->
+  <div class="suggestions-header">
+    <h2>👥 Personnes que vous pourriez connaître</h2>
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading()" class="loading">
+    <p>Chargement des utilisateurs...</p>
+  </div>
+
+  <!-- Erreur -->
+  <div *ngIf="error()" class="error">
+    <p>{{ error() }}</p>
+  </div>
+
+  <!-- Liste des utilisateurs (horizontal scroll) -->
+  <div *ngIf="!loading() && users().length > 0" class="users-carousel">
+    <div class="carousel-wrapper">
+      <div *ngFor="let user of users()" class="user-card-vertical">
+        <!-- Avatar -->
+        <div class="card-image" (click)="viewUserProfile(user.userId)" style="cursor: pointer;">
+          <div class="avatar-large">{{ getInitial(user.username) }}</div>
+          <button class="btn-close" (click)="$event.stopPropagation()">✕</button>
+        </div>
+
+        <!-- Nom -->
+        <div class="card-content">
+          <h3 class="username">{{ user.username }}</h3>
+          <p class="followers">{{ user.commonFollowers }} abonné(e)s en commun</p>
+        </div>
+
+        <!-- Bouton Follow -->
+        <button
+          *ngIf="!user.isFollowing"
+          class="btn-add-friend"
+          (click)="followUser(user)">
+          👤 Suivre
+        </button>
+        <button
+          *ngIf="user.isFollowing"
+          class="btn-added"
+          (click)="unfollowUser(user)">
+          ✓ Suivi
+        </button>
+      </div> 
+    </div>
+  </div>
+
+  <!-- Voir tout -->
+  <div *ngIf="!loading() && users().length > 0" class="see-all">
+    <a href="#">Voir tout</a>
+  </div>
+
+  <!-- Aucun utilisateur -->
+  <div *ngIf="!loading() && users().length === 0" class="no-users">
+    <p>Aucun utilisateur disponible</p>
+  </div>
+</div>

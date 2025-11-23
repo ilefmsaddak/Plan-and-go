@@ -1,0 +1,126 @@
+<!-- Modal d'inscription -->
+<div class="register-modal" (click)="closeRegisterModal()">
+  <div class="register-container" (click)="$event.stopPropagation()">
+    <!-- Header avec bouton fermer -->
+    <div class="register-header-top">
+      <h2>✨ Créer un compte</h2>
+      <button type="button" class="btn-close-modal" (click)="closeRegisterModal()" title="Fermer">
+        ✕
+      </button>
+    </div>
+
+    <!-- Header -->
+    <div class="register-header">
+      <p>Rejoignez la communauté Plan & Go</p>
+    </div>
+
+    <!-- Formulaire -->
+    <form (ngSubmit)="register()" class="register-form">
+      <!-- Nom -->
+      <div class="form-group">
+        <label for="firstName">Nom</label>
+        <input
+          id="firstName"
+          type="text"
+          [ngModel]="firstName()"
+          (ngModelChange)="firstName.set($event)"
+          name="firstName"
+          placeholder="firstName"
+          required
+          [disabled]="loading()">
+      </div>
+
+      <!-- Prénom -->
+      <div class="form-group">
+        <label for="lastName">Prénom</label>
+        <input
+          id="lastName"
+          type="text"
+          [ngModel]="lastName()"
+          (ngModelChange)="lastName.set($event)"
+          name="lastName"
+          placeholder="lastName"
+          required
+          [disabled]="loading()">
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          name="email"
+          placeholder="votre@email.com"
+          required
+          [disabled]="loading()">
+      </div>
+
+      <!-- Mot de passe -->
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <div class="password-input">
+          <input
+            id="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)"
+            name="password"
+            placeholder="••••••••"
+            required
+            [disabled]="loading()">
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePasswordVisibility()"
+            [disabled]="loading()">
+            {{ showPassword() ? '👁️' : '👁️‍🗨️' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirmer mot de passe -->
+      <div class="form-group">
+        <label for="passwordConfirm">Confirmer le mot de passe</label>
+        <div class="password-input">
+          <input
+            id="passwordConfirm"
+            [type]="showPasswordConfirm() ? 'text' : 'password'"
+            [ngModel]="passwordConfirm()"
+            (ngModelChange)="passwordConfirm.set($event)"
+            name="passwordConfirm"
+            placeholder="••••••••"
+            required
+            [disabled]="loading()">
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePasswordConfirmVisibility()"
+            [disabled]="loading()">
+            {{ showPasswordConfirm() ? '👁️' : '👁️‍🗨️' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Message d'erreur -->
+      <div *ngIf="error()" class="error-message">
+        ❌ {{ error() }}
+      </div>
+
+      <!-- Bouton d'inscription -->
+      <button
+        type="submit"
+        class="btn-register"
+        [disabled]="loading()">
+        {{ loading() ? 'Inscription en cours...' : 'Créer un compte' }}
+      </button>
+    </form>
+
+    <!-- Lien connexion -->
+    <div class="register-footer">
+      <p>Déjà inscrit? <a href="#" (click)="goToLogin(); $event.preventDefault()" class="link-login">Se connecter</a></p>
+    </div>
+  </div>
+</div>

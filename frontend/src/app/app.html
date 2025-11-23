@@ -1,1 +1,25 @@
-<router-outlet></router-outlet>
+<div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <h1 class="logo">🌍 Plan & Go</h1>
+            <div class="header-actions">
+                <a href="/" class="nav-link">Accueil</a>
+
+                <!-- Afficher uniquement si connecté -->
+                <div *ngIf="isAuthenticated()" class="authenticated-actions">
+                    <app-notifications></app-notifications>
+                    <a href="/profile" class="nav-link">Profil</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+        <router-outlet></router-outlet>
+    </main>
+
+    <!-- Auth Banner (Comme Facebook) -->
+    <app-auth-banner></app-auth-banner>
+</div>
