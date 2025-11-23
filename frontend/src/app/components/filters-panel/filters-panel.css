@@ -6,7 +6,10 @@
   background: #ffffff;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   /* overflow: hidden; */ /* ⚠️ Supprimez cette ligne */
-  max-height: 100vh;
+  max-height: 120vh;
+   transform: scale(0.80);  /* scales everything down to 75% */
+  transform-origin: top left; /* ensure scaling starts from top-left corner */
+  width: 125%;
 }
 
 /* Styles pour la section des détails du lieu */

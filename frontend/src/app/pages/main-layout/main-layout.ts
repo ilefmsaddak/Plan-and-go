@@ -3,10 +3,10 @@ import { FiltersPanel } from '../../components/filters-panel/filters-panel';
 import { GoogleMaps } from '../../components/google-maps/google-maps';
 import { CommonModule } from '@angular/common';
 import { Place } from '../../models/interfaces';
-
+import { Bucket } from '../../components/bucket/bucket';
 @Component({
   selector: 'app-main-layout',
-  imports: [CommonModule, FiltersPanel, GoogleMaps,],
+  imports: [CommonModule, FiltersPanel, GoogleMaps,Bucket],
   templateUrl: './main-layout.html',
   standalone: true,
   styleUrl: './main-layout.css'

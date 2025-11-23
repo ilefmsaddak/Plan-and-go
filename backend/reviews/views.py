@@ -15,10 +15,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-
-# ------------------------------------
-# 1) GET GOOGLE MAPS REVIEWS
-# ------------------------------------
 @api_view(['GET'])
 def get_place_reviews(request):
     place_id = request.GET.get("place_id")
@@ -35,9 +31,6 @@ def get_place_reviews(request):
     return Response(google_response)
 
 
-# ------------------------------------
-# 2) SUMMARIZE REVIEWS WITH GEMINI
-# ------------------------------------
 @api_view(['POST'])
 def summarize_reviews(request):
     google_json = request.data

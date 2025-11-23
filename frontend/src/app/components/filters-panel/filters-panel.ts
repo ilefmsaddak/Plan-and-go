@@ -11,6 +11,7 @@ import { Reviews } from '../reviews/reviews';
   standalone: true,
   styleUrl: './filters-panel.css'
 })
+
 export class FiltersPanel implements OnInit, OnChanges {
   @Input() mapLocation: { lat: number; lng: number } = { lat: 41.0082, lng: 28.9784 }; // Istanbul
   @Input() searchRadius: number = 5000; // meters

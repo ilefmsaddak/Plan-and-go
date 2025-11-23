@@ -177,7 +177,7 @@
         </div>
 
         <!-- Avis (exemple comme dans l'image) -->
-        <app-reviews [placeId]="selectedPlace.placeId"></app-reviews>
+        <app-reviews [placeId]="selectedPlace.placeId" [placeName]="selectedPlace.name" [type]="selectedPlace.type"></app-reviews>
 
         <!-- Services/Équipements -->
         <div class="amenities-section" *ngIf="selectedPlace.amenities">

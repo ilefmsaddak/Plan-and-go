@@ -1,9 +1,16 @@
-<button (click)="SumReviews()" [disabled]="loading" class="ai-btn">
-  <span *ngIf="!loading">✨ Summarize Reviews</span>
-  <span *ngIf="loading" class="loading">
-    <span class="hourglass">⌛</span> Generating...
-  </span>
-</button>
+<div class="top-actions">
+  <button (click)="SumReviews()" [disabled]="loading" class="btn">
+    <span *ngIf="!loading">✨ Summarize Reviews</span>
+    <span *ngIf="loading" class="loading">
+      <span class="hourglass">⌛</span> Generating...
+    </span>
+  </button>
+
+  <button class="btn" (click)="addToFavorite()">
+    ❤️ Add to Favorite
+  </button>
+</div>
+
 
 <!-- AI Summary -->
 <div *ngIf="aiSummary" class="ai-summary-card">

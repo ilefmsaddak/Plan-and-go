@@ -1,5 +1,5 @@
 /* Fancy button */
-.ai-btn {
+.btn {
   background: linear-gradient(135deg, #4a67ff, #7e8dff);
   color: white;
   padding: 12px 20px;
@@ -12,14 +12,19 @@
   box-shadow: 0 5px 14px rgba(74, 103, 255, 0.3);
 }
 
-.ai-btn:hover {
+.btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 20px rgba(74, 103, 255, 0.45);
 }
 
-.ai-btn:disabled {
+.btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.top-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 /* Loading animation */

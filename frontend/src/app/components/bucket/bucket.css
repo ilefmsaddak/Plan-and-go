@@ -1,0 +1,245 @@
+
+
+.trip-bucket {
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px;
+}
+
+.panel-header {
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 2px solid #e0e0e0;
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+   transform: scale(0.70);  /* scales everything down to 75% */
+  transform-origin: top left; /* ensure scaling starts from top-left corner */
+  width: 133.33%;
+   flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  max-height: 120vh;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+/* ======================
+   Scrollable content
+====================== */
+
+
+/* Trip item cards */
+.trip-item {
+  background: #4a90e2;
+  color: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.trip-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+}
+
+.date-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.temp-label {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Content boxes */
+.content {
+  padding: 8px 12px;
+  background: #f2f2f2;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #444;
+  margin-bottom: 12px;
+}
+
+/* Favorites list */
+ul.favorites-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+  max-width: 400px;
+  max-height: 300px;   /* new: scrollable */
+  overflow-y: auto;    /* new: vertical scroll */
+}
+
+ul.favorites-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  font-size: 14px;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+ul.favorites-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+ul.favorites-list li .icon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+ul.favorites-list li button {
+  background-color: #ff4d4f;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+ul.favorites-list li button:hover {
+  background-color: #e04344;
+  transform: scale(1.05);
+}
+
+/* Day bucket container */
+.bucket-day, .day-zone {
+  border: 1px dashed #ccc;
+  padding: 12px;
+  margin-bottom: 12px;
+  min-height: 60px;
+  max-height: 250px;  /* new: scrollable */
+  overflow-y: auto;   /* new: vertical scroll */
+  border-radius: 8px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.bucket-day:hover, .day-zone:hover {
+  border-color: #4a90e2;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+/* Dragged item style */
+.cdk-drag-preview {
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  border-radius: 8px;
+  background: #fff;
+  transform: scale(1.05);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+/* Day bucket items */
+.day-place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.day-place:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+.day-place span.icon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+/* Drag handle */
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Dragging effect applied to both favorites and day items */
+.cdk-drag-dragging {
+  background-color: #d1ecf1 !important;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.25) !important;
+  transform: scale(1.05) !important;
+  cursor: grabbing !important;
+}
+
+.day-place:active, .favorites-list li:active {
+  cursor: grabbing;
+}
+
+/* Drag preview (what you see while dragging) */
+.cdk-drag-preview {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+}
+
+/* Placeholder (keeps the layout) */
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+/* Optional: original element while dragging */
+.cdk-drag-dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+
+/* Save button */
+.panel-header .save {
+  display: block;
+  margin: 20px auto; /* centers horizontally */
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background-color: #4a90e2;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+}
+
+.panel-header .save:hover {
+  background-color: #357ab8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.panel-header .save:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
