@@ -15,6 +15,7 @@ interface DayPlan {
   imports: [CommonModule, DragDropModule, FormsModule],
   templateUrl: './bucket.html',
   styleUrls: ['./bucket.css'],
+  standalone: true
 })
 export class Bucket implements OnInit {
 

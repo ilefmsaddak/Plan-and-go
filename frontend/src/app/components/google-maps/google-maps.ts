@@ -1,8 +1,10 @@
-/// <reference types="@types/google.maps" />
+/// <reference types="leaflet" />
 import { AfterViewInit, Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { environment } from '../../environment/env';
 import { Place } from '../../models/interfaces';
 import { PlacesService } from '../../services/places.service';
+import * as L from 'leaflet';
+import { NgZone } from '@angular/core';
 
 @Component({
   selector: 'app-google-maps',
@@ -16,83 +18,19 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
   @Input() initialLocation: string = 'Istanbul, Turkey';
   @Input() places: Place[] = [];
 
-  map!: google.maps.Map;
-  directionsService!: google.maps.DirectionsService;
-  directionsRenderer!: google.maps.DirectionsRenderer;
-  originAutocomplete!: any;
-  destinationAutocomplete!: any;
-
-  private originPlace: google.maps.places.PlaceResult | null = null;
-  private destinationPlace: google.maps.places.PlaceResult | null = null;
-
-  // Stocker les marqueurs
-  private markers: google.maps.Marker[] = [];
+  map!: L.Map;
+  private markers: L.Marker[] = [];
   private mapReady: boolean = false;
 
-  constructor(private placesService: PlacesService) { }
-
-  // Déplacer les icônes dans une méthode pour éviter l'initialisation prématurée
-  private getMarkerIcons() {
-    return {
-      site: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#4285f4',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      },
-      hotel: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#34a853',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      },
-      food: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#fbbc05',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      },
-      cafe: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#ea4335',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      },
-      transports: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#ff6d00',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      },
-      shop: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: '#f39c12',
-        fillOpacity: 1,
-        strokeWeight: 2,
-        strokeColor: '#ffffff',
-        scale: 10
-      }
-    };
-  }
+  constructor(private placesService: PlacesService, private zone: NgZone) { }
 
   ngOnChanges(changes: SimpleChanges) {
     // Lorsque les places changent, les ajouter à la carte
     if (changes['places']) {
       const newPlaces = changes['places'].currentValue || [];
 
-      if (this.mapReady && this.isGoogleMapsLoaded()) {
-        // Map est prête, ajouter les marqueurs immédiatement
-        console.log('Places received (map ready):', newPlaces.length);
+      if (this.mapReady) {
+        console.log('📍 Places received (map ready):', newPlaces.length);
         this.clearMarkers();
         if (newPlaces.length > 0) {
           this.addCustomMarkers(newPlaces);
@@ -105,8 +43,8 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
 
         const tryAddMarkers = () => {
           retries++;
-          if (this.mapReady && this.isGoogleMapsLoaded()) {
-            console.log('Places received (retry ' + retries + '):', placesToAdd.length);
+          if (this.mapReady) {
+            console.log('📍 Places received (retry ' + retries + '):', placesToAdd.length);
             this.clearMarkers();
             if (placesToAdd.length > 0) {
               this.addCustomMarkers(placesToAdd);
@@ -114,7 +52,7 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
           } else if (retries < maxRetries) {
             setTimeout(tryAddMarkers, 100);
           } else {
-            console.error('Map failed to initialize after 3 seconds');
+            console.error('❌ Map failed to initialize after 3 seconds');
           }
         };
 
@@ -124,294 +62,307 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
   }
 
   ngAfterViewInit(): void {
-    this.loadGoogleMapsScript().then(() => {
-      this.initMap();
-    }).catch(error => {
-      console.error('Failed to load Google Maps:', error);
+    console.log('🗺️ GoogleMaps component initialized with Leaflet');
+    // Ensure the map initialization happens in a safe context
+    this.zone.runOutsideAngular(() => {
+        this.initMap();
     });
-  }
-
-  // Vérifier si Google Maps est chargé
-  private isGoogleMapsLoaded(): boolean {
-    return typeof google !== 'undefined' && google.maps !== undefined;
-  }
-
-  // Gérer les changements de filtres
-  private handleFiltersChange(filters: string[]) {
-    if (this.map && this.isGoogleMapsLoaded()) {
-      this.updateMapMarkers(filters);
-    }
-  }
-
-  // Mettre à jour les marqueurs basés sur les filtres
-  private updateMapMarkers(filters: string[]) {
-    if (!this.places) return;
-
-    const filteredPlaces =
-      filters.length === 0
-        ? this.places
-        : this.places.filter(p => filters.includes(p.type));
-
-    this.clearMarkers();
-    this.addCustomMarkers(filteredPlaces);
   }
 
   private clearMarkers(): void {
-    this.markers.forEach(marker => marker.setMap(null));
+    this.markers.forEach(marker => this.map.removeLayer(marker));
     this.markers = [];
   }
 
-  // Ajouter des marqueurs personnalisés
   private addCustomMarkers(places: Place[]) {
-    if (!this.isGoogleMapsLoaded()) {
-      console.warn('Google Maps not loaded, cannot add markers');
-      return;
-    }
+    console.log(`🎯 Adding ${places.length} markers to map`);
+    let addedCount = 0;
+    
+    places.forEach((place, index) => {
+      try {
+        const lat = place.coordinates?.lat;
+        const lng = place.coordinates?.lng;
 
-    // Display all received places without additional filtering
-    // (parent already handles filtering)
-    places.forEach(place => {
-      // Créer un marqueur avec icône HTML (emoji)
-      const marker = new google.maps.Marker({
-        position: new google.maps.LatLng(place.coordinates.lat, place.coordinates.lng),
-        map: this.map,
-        title: place.name,
-        icon: this.createEmojiMarker(place.type),
-        optimized: false
-      });
-
-      // Créer une info window riche avec image
-      const photoUrl = place.photos && place.photos.length > 0
-        ? place.photos[0]
-        : 'https://via.placeholder.com/300x200?text=No+Image';
-
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div class="info-window" style="
-            width: 320px;
-            font-family: 'Segoe UI', Arial;
-            border-radius: 8px;
-            overflow: hidden;
-          ">
-            <div style="position: relative; background: #f5f5f5;">
-              <img src="${photoUrl}" alt="${place.name}" style="
-                width: 100%;
-                height: 180px;
-                object-fit: cover;
-                display: block;
-              "/>
-              <div style="
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: #fff;
-                padding: 6px 12px;
-                border-radius: 20px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #667eea;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-              ">${place.type}</div>
-            </div>
-            <div style="padding: 16px;">
-              <h3 style="
-                margin: 0 0 8px 0;
-                color: #333;
-                font-size: 16px;
-                font-weight: 600;
-              ">${place.name}</h3>
-              <p style="
-                margin: 0 0 12px 0;
-                color: #666;
-                font-size: 13px;
-                line-height: 1.5;
-              ">
-                📍 ${place.address}
-              </p>
-              <div style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                margin-bottom: 12px;
-              ">
-                <span style="
-                  color: #ffc107;
-                  font-size: 14px;
-                  letter-spacing: 1px;
-                ">${this.getStars(place.rating)}</span>
-                <span style="
-                  color: #999;
-                  font-size: 12px;
-                ">(${place.reviews.toLocaleString()} avis)</span>
-              </div>
-              <div style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-              ">
-                <a href="https://www.google.com/maps/place/?q=place_id:${place.placeId}" 
-                   target="_blank"
-                   style="
-                  padding: 8px 12px;
-                  background: #667eea;
-                  color: white;
-                  text-align: center;
-                  border-radius: 6px;
-                  font-size: 12px;
-                  font-weight: 600;
-                  text-decoration: none;
-                  cursor: pointer;
-                  border: none;
-                ">
-                  View on Maps
-                </a>
-                <a href="https://www.google.com/search?q=${encodeURIComponent(place.name)}" 
-                   target="_blank"
-                   style="
-                  padding: 8px 12px;
-                  background: #f0f0f0;
-                  color: #333;
-                  text-align: center;
-                  border-radius: 6px;
-                  font-size: 12px;
-                  font-weight: 600;
-                  text-decoration: none;
-                  cursor: pointer;
-                  border: none;
-                ">
-                  🔍 Search
-                </a>
-              </div>
-            </div>
-          </div>
-        `
-      });
-
-      marker.addListener('click', () => {
-        // Fermer toutes les autres fenêtres d'information
-        this.markers.forEach(m => {
-          const currentInfoWindow = (m as any).infoWindow;
-          if (currentInfoWindow) {
-            currentInfoWindow.close();
+        // Double-check coordinates (should already be validated in service)
+        if (!isFinite(lat) || !isFinite(lng)) {
+          console.warn(`⚠️ Place ${index} (${place.name}) has invalid coordinates`);
+          return;
+        }
+        
+        // Créer le marqueur avec icône personnalisée
+        const marker = L.marker(
+          [lat, lng],
+          {
+            icon: this.createCustomIcon(place.type),
+            title: place.name
           }
+        );
+
+        // Créer le contenu du popup avec les détails du lieu
+        const popupContent = this.createPopupContent(place);
+        
+        // Attacher le popup au marqueur
+        marker.bindPopup(popupContent, {
+          maxWidth: 350,
+          className: 'place-popup',
+          closeButton: true
         });
 
-        infoWindow.open(this.map, marker);
-        // Stocker la référence à la fenêtre d'information
-        (marker as any).infoWindow = infoWindow;
-      });
-
-      // Ajouter un hover effet
-      marker.addListener('mouseover', () => {
-        marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
-      });
-
-      marker.addListener('mouseout', () => {
-        marker.setZIndex(1);
-      });
-
-
-      this.markers.push(marker);
+        // Ajouter le marqueur à la carte
+        marker.addTo(this.map);
+        
+        // Ajouter le marqueur au tableau pour tracking
+        this.markers.push(marker);
+        addedCount++;
+        
+        if ((index + 1) % 50 === 0) {
+          console.log(`  ... ${index + 1}/${places.length} markers added`);
+        }
+      } catch (error) {
+        console.error(`❌ Error adding marker at index ${index}:`, error, place);
+      }
     });
+
+    console.log(`✅ Successfully added ${addedCount}/${places.length} markers`);
 
     // Ajuster les limites de la carte pour montrer tous les marqueurs
     if (this.markers.length > 0) {
+      console.log(`🔍 Fitting map bounds to show ${this.markers.length} markers`);
       this.fitMapBounds();
     }
   }
 
-  private getMarkerIcon(type: string): google.maps.Symbol {
-    const markerIcons = this.getMarkerIcons();
-    // Icône par défaut si le type n'est pas trouvé
-    const defaultIcon = {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: '#666666',
-      fillOpacity: 1,
-      strokeWeight: 2,
-      strokeColor: '#ffffff',
-      scale: 8
-    };
+  private createPopupContent(place: Place): string {
+    // Sélectionner l'image
+    const photoUrl = place.photos && place.photos.length > 0
+      ? place.photos[0]
+      : 'https://via.placeholder.com/320x200?text=No+Image';
 
-    return markerIcons[type as keyof typeof markerIcons] || defaultIcon;
+    // Formater les avis
+    const reviewText = place.reviews > 0 ? `(${place.reviews} avis)` : '(Pas d\'avis)';
+    const stars = this.getStars(place.rating);
+
+    // Construire le contenu HTML du popup
+    return `
+      <div class="leaflet-popup-content-wrapper place-info">
+        <div class="place-header" style="position: relative; margin: -12px -12px 0 -12px; background: #f5f5f5;">
+          <img 
+            src="${photoUrl}" 
+            alt="${place.name}" 
+            style="
+              width: 100%; 
+              height: 180px; 
+              object-fit: cover; 
+              display: block;
+              border-radius: 3px 3px 0 0;
+            "
+            onerror="this.src='https://via.placeholder.com/320x200?text=No+Image'"
+          />
+          <div style="
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 11px; 
+            font-weight: 600; 
+            color: #667eea; 
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
+          ">
+            ${this.getPlaceTypeLabel(place.type)}
+          </div>
+        </div>
+        <div style="padding: 16px;">
+          <h3 style="
+            margin: 0 0 8px 0; 
+            color: #2c3e50; 
+            font-size: 16px; 
+            font-weight: 600;
+            word-break: break-word;
+          ">
+            ${place.name}
+          </h3>
+          <p style="
+            margin: 0 0 10px 0; 
+            color: #7f8c8d; 
+            font-size: 13px; 
+            line-height: 1.5;
+            word-break: break-word;
+          ">
+            📍 ${place.address}
+          </p>
+          <div style="
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin-bottom: 12px;
+            font-size: 13px;
+          ">
+            <span style="color: #ffc107; letter-spacing: 1px;">${stars}</span>
+            <span style="color: #95a5a6;">${place.rating}/5</span>
+            <span style="color: #bdc3c7;">•</span>
+            <span style="color: #7f8c8d;">${reviewText}</span>
+          </div>
+          ${place.phoneNumber ? `
+            <p style="margin: 8px 0; color: #2c3e50; font-size: 12px;">
+              📞 <a href="tel:${place.phoneNumber}" style="color: #667eea; text-decoration: none;">
+                ${place.phoneNumber}
+              </a>
+            </p>
+          ` : ''}
+          <div style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+          ">
+            <button onclick="alert('Route calculation coming soon!')" style="
+              padding: 8px 12px;
+              background: #667eea;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 600;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">
+              🗺️ Itinéraire
+            </button>
+            <button onclick="alert('Saved to favorites!')" style="
+              padding: 8px 12px;
+              background: #f39c12;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 600;
+              transition: all 0.2s;
+            " onmouseover="this.style.background='#e67e22'" onmouseout="this.style.background='#f39c12'">
+              ⭐ Ajouter
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
-  private createEmojiMarker(type: string): google.maps.Icon {
-    // Mapper les types aux emojis
+  private getPlaceTypeLabel(type: string): string {
+    const typeLabels: { [key: string]: string } = {
+      site: 'Site',
+      hotel: 'Hôtel',
+      food: 'Restaurant',
+      cafe: 'Café',
+      shop: 'Magasin',
+      transports: 'Transport'
+    };
+    return typeLabels[type] || 'Lieu';
+  }
+
+  private createCustomIcon(type: string): L.DivIcon {
     const emojiMap: { [key: string]: string } = {
-      site: '📷',
-      hotel: '🏨',
-      food: '🍽️',
-      cafe: '☕',
-      shop: '🛍️',
-      transports: '🚌'
+      site: '📷',      // Appareil photo pour les sites touristiques
+      hotel: '🏨',     // Hôtel
+      food: '🍽️',      // Restaurant
+      cafe: '☕',      // Café
+      shop: '🛍️',      // Magasin
+      transports: '🚌' // Transports
+    };
+
+    const colorMap: { [key: string]: string } = {
+      site: '#4285f4',      // Bleu (Google Blue)
+      hotel: '#34a853',     // Vert (Google Green)
+      food: '#fbbc05',      // Orange/Jaune (Google Yellow)
+      cafe: '#ea4335',      // Rouge (Google Red)
+      shop: '#f39c12',      // Orange
+      transports: '#ff6d00' // Orange foncé
     };
 
     const emoji = emojiMap[type] || '📍';
+    const color = colorMap[type] || '#667eea';
 
-    // Créer un canvas avec l'emoji
-    const canvas = document.createElement('canvas');
-    canvas.width = 40;
-    canvas.height = 40;
-    const ctx = canvas.getContext('2d');
+    // Créer un HTML pour l'icône avec une meilleure apparence
+    const html = `
+      <div style="
+        background: white;
+        border: 3px solid ${color};
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 
+          0 2px 4px rgba(0, 0, 0, 0.2),
+          0 0 0 2px rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+      " class="marker-icon">
+        ${emoji}
+      </div>
+    `;
 
-    if (ctx) {
-      // Fond blanc avec bordure
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(20, 20, 18, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Bordure colorée selon le type
-      const colorMap: { [key: string]: string } = {
-        site: '#4285f4',
-        hotel: '#34a853',
-        food: '#fbbc05',
-        cafe: '#ea4335',
-        shop: '#f39c12',
-        transports: '#ff6d00'
-      };
-
-      ctx.strokeStyle = colorMap[type] || '#667eea';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(20, 20, 18, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Emoji
-      ctx.font = '24px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(emoji, 20, 20);
-    }
-
-    return {
-      url: canvas.toDataURL(),
-      scaledSize: new google.maps.Size(40, 40),
-      origin: new google.maps.Point(0, 0),
-      anchor: new google.maps.Point(20, 20)
-    };
+    const icon = L.divIcon({
+      html: html,
+      iconSize: [42, 42],           // Taille de l'icône
+      iconAnchor: [21, 42],         // Point d'ancrage (bas du cercle)
+      popupAnchor: [0, -42],        // Décalage du popup par rapport au marqueur
+      className: 'custom-marker'     // Classe CSS pour les animations
+    });
+    
+    return icon;
   }
 
   private fitMapBounds() {
-    if (this.markers.length === 0 || !this.isGoogleMapsLoaded()) return;
+    if (this.markers.length === 0) {
+      console.warn('⚠️ No markers to fit bounds');
+      return;
+    }
 
-    const bounds = new google.maps.LatLngBounds();
-    this.markers.forEach(marker => {
-      const position = marker.getPosition();
-      if (position) {
-        bounds.extend(position);
-      }
-    });
+    try {
+      // Créer les limites manuellement en itérant sur les marqueurs
+      let minLat = Infinity, maxLat = -Infinity;
+      let minLng = Infinity, maxLng = -Infinity;
+      let validMarkerCount = 0;
 
-    this.map.fitBounds(bounds);
-
-    // Ne pas zoomer trop si un seul marqueur
-    if (this.markers.length === 1) {
-      const listener = google.maps.event.addListener(this.map, 'bounds_changed', () => {
-        this.map.setZoom(15);
-        google.maps.event.removeListener(listener);
+      this.markers.forEach(marker => {
+        const latLng = marker.getLatLng();
+        if (latLng && isFinite(latLng.lat) && isFinite(latLng.lng)) {
+          minLat = Math.min(minLat, latLng.lat);
+          maxLat = Math.max(maxLat, latLng.lat);
+          minLng = Math.min(minLng, latLng.lng);
+          maxLng = Math.max(maxLng, latLng.lng);
+          validMarkerCount++;
+        }
       });
+
+      if (validMarkerCount === 0) {
+        console.error('❌ No valid marker coordinates found');
+        return;
+      }
+
+      // Créer les bounds à partir des coordonnées valides
+      const bounds = L.latLngBounds(
+        [minLat, minLng], // Southwest
+        [maxLat, maxLng]  // Northeast
+      );
+
+      console.log(`📍 Bounds calculated from ${validMarkerCount}/${this.markers.length} markers`);
+      console.log(`   SW: [${minLat.toFixed(4)}, ${minLng.toFixed(4)}]`);
+      console.log(`   NE: [${maxLat.toFixed(4)}, ${maxLng.toFixed(4)}]`);
+      
+      // Ajouter du padding pour mieux voir les marqueurs
+      this.map.fitBounds(bounds, { padding: [80, 80], maxZoom: 14 });
+      console.log('✅ Map bounds fitted to markers with maxZoom: 14');
+    } catch (error) {
+      console.error('❌ Error fitting map bounds:', error);
+      // Fallback : centrer sur Istanbul
+      this.map.setView([41.0082, 28.9784], 12);
     }
   }
 
@@ -419,321 +370,53 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   }
 
-  private loadGoogleMapsScript(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.isGoogleMapsLoaded()) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${environment.googleMapsApiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        this.waitForGoogleMaps().then(resolve).catch(reject);
-      };
-
-      script.onerror = (error) => {
-        reject(new Error('Failed to load Google Maps script'));
-      };
-
-      document.head.appendChild(script);
-    });
-  }
-
-  private waitForGoogleMaps(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const maxAttempts = 50;
-
-      const checkGoogleMaps = () => {
-        attempts++;
-        if (this.isGoogleMapsLoaded()) {
-          resolve();
-        } else if (attempts < maxAttempts) {
-          setTimeout(checkGoogleMaps, 100);
-        } else {
-          reject(new Error('Google Maps failed to initialize within timeout'));
-        }
-      };
-
-      checkGoogleMaps();
-    });
-  }
-
-  private initMap() {
-    if (!this.isGoogleMapsLoaded()) {
-      console.error('Google Maps not available when initMap was called');
-      return;
-    }
-
+ private initMap() {
     const mapElement = document.getElementById('map');
     if (!mapElement) {
-      console.error('Map element not found');
+      console.error('❌ Map element not found');
       return;
     }
 
     try {
-      // Créer la carte avec configuration pour montrer UNIQUEMENT les marqueurs personnalisés
-      this.map = new google.maps.Map(mapElement, {
-        center: { lat: 41.0082, lng: 28.9784 }, // Istanbul
-        zoom: 12,
-        mapTypeControl: true,
-        streetViewControl: true,
-        fullscreenControl: true,
-        zoomControl: true,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          },
-          {
-            featureType: 'poi',
-            elementType: 'geometry',
-            stylers: [{ visibility: 'off' }]
-          },
-          {
-            featureType: 'poi.business',
-            stylers: [{ visibility: 'off' }]
-          },
-          {
-            featureType: 'poi.park',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
-      });
+      // 1. Créer la carte Leaflet avec OpenStreetMap
+      this.map = L.map('map').setView([41.0082, 28.9784], 12);
 
-      // Initialiser le PlacesService après la création de la map
-      console.log("initalize service")
+      // 2. Ajouter le tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(this.map);
+
+      // 3. Defer the map sizing correction to the next browser repaint/tick
+      // This is the CRITICAL change for Angular/Leaflet integration
+      setTimeout(() => {
+          if (this.map) {
+            this.map.invalidateSize(); 
+            console.log('✨ Map size validated AFTER DOM render.');
+          }
+      }, 50); // A small delay to ensure CSS has been applied
+
+      // Initialiser le PlacesService
+      console.log('🔧 Initializing PlacesService');
       this.placesService.initializeService(this.map);
 
-      // Centrer la carte sur la localisation initiale
-      this.centerMapToLocation(this.initialLocation);
-
-      this.directionsService = new google.maps.DirectionsService();
-
-      const warningsPanel = document.getElementById('warnings-panel');
-      this.directionsRenderer = new google.maps.DirectionsRenderer({
-        map: this.map,
-        panel: warningsPanel || undefined,
-        suppressMarkers: true, // Hide default markers from directions
-        polylineOptions: {
-          strokeColor: '#667eea',
-          strokeWeight: 4,
-          strokeOpacity: 0.8
-        }
-      });
-
-      // Ajouter les marqueurs personnalisés APRÈS la création de la map
+      // Ajouter les marqueurs personnalisés APRÈS la création de la carte
       if (this.places.length > 0) {
+        console.log('📍 Adding ' + this.places.length + ' initial markers');
         this.addCustomMarkers(this.places);
       }
 
-      this.initPlacesAutocomplete();
-
       // Marquer la carte comme prête
       this.mapReady = true;
+      console.log('✅ Map initialization complete');
     } catch (error) {
-      console.error('Error initializing map:', error);
-    }
-  }
-
-  private centerMapToLocation(location: string) {
-    if (!this.isGoogleMapsLoaded()) return;
-
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: location }, (results, status) => {
-      if (status === 'OK' && results && results[0]) {
-        this.map.setCenter(results[0].geometry.location);
-        this.map.setZoom(12); // Ajuster le zoom pour la vue de la ville
-      } else {
-        console.warn('Geocoding failed for location:', location, status);
-      }
-    });
-  }
-
-  private async initPlacesAutocomplete() {
-    if (!this.isGoogleMapsLoaded()) return;
-
-    const originInput = document.getElementById('origin-input') as HTMLInputElement;
-    const destinationInput = document.getElementById('destination-input') as HTMLInputElement;
-
-    if (!originInput || !destinationInput) {
-      console.error('Input elements not found');
-      return;
-    }
-
-    this.initLegacyAutocompleteWithFallback(originInput, destinationInput);
-  }
-
-  private initLegacyAutocompleteWithFallback(originInput: HTMLInputElement, destinationInput: HTMLInputElement) {
-    if (!this.isGoogleMapsLoaded()) return;
-
-    try {
-      this.originAutocomplete = new google.maps.places.Autocomplete(originInput, {
-        fields: ['geometry', 'name', 'formatted_address']
-      });
-
-      this.destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, {
-        fields: ['geometry', 'name', 'formatted_address']
-      });
-
-      this.originAutocomplete.bindTo('bounds', this.map);
-      this.destinationAutocomplete.bindTo('bounds', this.map);
-
-      this.originAutocomplete.addListener('place_changed', () => {
-        this.originPlace = this.originAutocomplete.getPlace();
-        this.updateInputStyle('origin-input', true);
-      });
-
-      this.destinationAutocomplete.addListener('place_changed', () => {
-        this.destinationPlace = this.destinationAutocomplete.getPlace();
-        this.updateInputStyle('destination-input', true);
-      });
-
-    } catch (legacyError) {
-      console.error('Legacy Autocomplete failed:', legacyError);
-      this.showManualInputInstructions();
-    }
-  }
-
-  private updateInputStyle(inputId: string, isValid: boolean) {
-    const input = document.getElementById(inputId) as HTMLInputElement;
-    if (input) {
-      if (isValid) {
-        input.style.borderColor = '#4CAF50';
-        input.style.backgroundColor = '#f8fff8';
-      } else {
-        input.style.borderColor = '#ccc';
-        input.style.backgroundColor = '';
-      }
-    }
-  }
-
-  private showManualInputInstructions() {
-    const originInput = document.getElementById('origin-input') as HTMLInputElement;
-    const destinationInput = document.getElementById('destination-input') as HTMLInputElement;
-
-    if (originInput && destinationInput) {
-      originInput.placeholder = 'Enter origin address manually';
-      destinationInput.placeholder = 'Enter destination address manually';
+      console.error('❌ Error initializing map:', error);
     }
   }
 
   calculateAndDisplayRoute() {
-    this.calculateRouteWithStoredPlaces();
-  }
-
-  private calculateRouteWithStoredPlaces() {
-    if (!this.originPlace || !this.destinationPlace) {
-      const currentOriginPlace = this.originAutocomplete.getPlace();
-      const currentDestinationPlace = this.destinationAutocomplete.getPlace();
-
-      if (!currentOriginPlace?.geometry?.location || !currentDestinationPlace?.geometry?.location) {
-        this.tryGeocodeFromInputs();
-        return;
-      }
-
-      this.originPlace = currentOriginPlace;
-      this.destinationPlace = currentDestinationPlace;
-    }
-
-    const originLocation = this.getLocationFromPlace(this.originPlace, 'origin');
-    const destinationLocation = this.getLocationFromPlace(this.destinationPlace, 'destination');
-
-    if (originLocation && destinationLocation) {
-      this.calculateRoute(originLocation, destinationLocation);
-    } else {
-      this.tryGeocodeFromInputs();
-    }
-  }
-
-  private getLocationFromPlace(place: google.maps.places.PlaceResult | null, placeType: string): google.maps.LatLng | null {
-    if (!place?.geometry?.location) {
-      console.warn(`No location found for ${placeType}:`, place);
-      return null;
-    }
-
-    const location = place.geometry.location;
-
-    if (!(location instanceof google.maps.LatLng)) {
-      console.warn(`Invalid location type for ${placeType}:`, location);
-      return null;
-    }
-
-    return location;
-  }
-
-  private tryGeocodeFromInputs() {
-    const originInput = document.getElementById('origin-input') as HTMLInputElement;
-    const destinationInput = document.getElementById('destination-input') as HTMLInputElement;
-
-    if (!originInput.value || !destinationInput.value) {
-      alert('Please enter both origin and destination addresses.');
-      return;
-    }
-
-    alert('Please select addresses from the dropdown suggestions for better accuracy, or we will try to use your entered text.');
-    this.geocodeAndCalculateRoute(originInput.value, destinationInput.value);
-  }
-
-  private async geocodeAndCalculateRoute(originAddress: string, destinationAddress: string) {
-    try {
-      const [originLocation, destinationLocation] = await Promise.all([
-        this.geocodeAddress(originAddress),
-        this.geocodeAddress(destinationAddress)
-      ]);
-
-      if (originLocation && destinationLocation) {
-        this.calculateRoute(originLocation, destinationLocation);
-      } else {
-        alert('Could not find locations for the entered addresses. Please ensure they are valid and try again.');
-      }
-    } catch (error) {
-      alert('Error finding locations. Please try again.');
-    }
-  }
-
-  private geocodeAddress(address: string): Promise<google.maps.LatLng | null> {
-    return new Promise((resolve) => {
-      if (!this.isGoogleMapsLoaded()) {
-        resolve(null);
-        return;
-      }
-
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ address: address }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          resolve(results[0].geometry.location);
-        } else {
-          console.warn('Geocoding failed for address:', address, status);
-          resolve(null);
-        }
-      });
-    });
-  }
-
-  private calculateRoute(origin: google.maps.LatLng, destination: google.maps.LatLng) {
-    if (!this.isGoogleMapsLoaded()) return;
-
-    this.directionsService.route(
-      {
-        origin: origin,
-        destination: destination,
-        travelMode: google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true,
-      },
-      (response, status) => {
-        if (status === 'OK' && response) {
-          this.directionsRenderer.setDirections(response);
-        } else {
-          alert('Directions request failed due to ' + status);
-        }
-      }
-    );
+    // Fonctionnalité de calcul de route - Non implémentée pour Leaflet
+    console.warn('⚠️ Route calculation not yet implemented with Leaflet');
   }
 
   // Méthode pour effacer tous les marqueurs (peut être appelée depuis l'extérieur)
@@ -743,9 +426,8 @@ export class GoogleMaps implements AfterViewInit, OnChanges {
 
   // Méthode pour centrer la carte sur un lieu spécifique
   public centerOnLocation(lat: number, lng: number, zoom: number = 15) {
-    if (this.map && this.isGoogleMapsLoaded()) {
-      this.map.setCenter(new google.maps.LatLng(lat, lng));
-      this.map.setZoom(zoom);
+    if (this.map) {
+      this.map.setView([lat, lng], zoom);
     }
   }
 }

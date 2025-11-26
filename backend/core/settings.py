@@ -12,6 +12,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import mongoengine
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-kk-$+1sci7^^$=*zjg6reoz2x$l-07f0!$#u6$a9nu3_7!r&*2'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -40,13 +45,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',  
     'reviews', 
-
-     'corsheaders',   # <--- ajoute
-    'social',        # <--- ton app
+    'corsheaders',
+    'social',
+    'map',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # <--- ajoute
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -55,6 +60,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware'
 ]
+
+# CORS Configuration from .env
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:4200,http://127.0.0.1:4200').split(',')
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'core.urls'
 
@@ -127,23 +136,79 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
-
+import logging
 from mongoengine import connect
+import ssl
 
-conn = connect(
-   db="plan_and_go",  # nom de ta base
-    host="mongodb+srv://saharbgs_db_user:saharsahar125@planandgo.zj27zym.mongodb.net/?appName=planandgo",
-)
+# Configure logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        # Reduce dev server access logs noise
+        "django.server": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Keep Django app logs at INFO
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Reduce noisy HTTP libs
+        "urllib3": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "requests": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}
 
+logger = logging.getLogger(__name__)
 
-CORS_ALLOW_ALL_ORIGINS = True
+# MongoDB Connection
+MONGODB_URI = os.getenv('MONGODB_URI')
+MONGO_DB = os.getenv('MONGO_DB', 'plan_and_go')
 
-#mongodb+srv://saharbgs_db_user:Bg5Dbu67HyF9mpfS@planandgo.zj27zym.mongodb.net/
-#from mongoengine import connect
-#mongodb+srv://saharbgs_db_user:Bg5Dbu67HyF9mpfS@planandgo.zj27zym.mongodb.net/?appName=planandgo
-#connect(
- #  host="mongodb+srv://saharbgs_db_user:Bg5Dbu67HyF9mpfS@planandgo.zj27zym.mongodb.net/?appName=planandgo"
-#)
+if MONGODB_URI:
+    try:
+        # Pour MongoDB Atlas, désactiver la vérification SSL temporairement
+        # En production, utiliser un certificat valide
+        connect(
+            db=MONGO_DB,
+            host=MONGODB_URI,
+            retryWrites=False,
+            tlsInsecure=True,
+            serverSelectionTimeoutMS=5000
+        )
+        logger.info("✓ MongoDB Atlas connected successfully")
+    except Exception as e:
+        logger.error(f"MongoDB connection error: {e}")
+        import traceback
+        traceback.print_exc()
+

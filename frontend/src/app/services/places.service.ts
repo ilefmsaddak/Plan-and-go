@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable, from, of, throwError } from 'rxjs';
 import { map, mergeMap, catchError, toArray } from 'rxjs/operators';
 import { Place } from '../models/interfaces';
+import { environment } from '../environment/env';
 
 export interface PlacesSearchOptions {
   location: { lat: number; lng: number };
@@ -14,27 +16,28 @@ export interface PlacesSearchOptions {
   providedIn: 'root'
 })
 export class PlacesService {
-  private service: google.maps.places.PlacesService | null = null;
-  private map: google.maps.Map | null = null;
+  // La clé SerpApi ne devrait jamais être exposée au frontend
+  // Elle reste stockée en backend et le proxy la gère
+  private proxyUrl: string = environment.mapProxyUrl;
 
-  // Mapping des types de filtres vers Google Places types
+  // Mapping des types de filtres vers SerpApi keywords
   private typeMapping: { [key: string]: string[] } = {
-    site: ['tourist_attraction', 'point_of_interest', 'museum', 'art_gallery'],
-    hotel: ['lodging', 'hotel'],
-    food: ['restaurant'],
-    cafe: ['cafe', 'bakery'],
-    shop: ['shopping_mall', 'store', 'clothing_store'],
-    transports: ['bus_station', 'subway_station', 'train_station', 'transit_station', 'airport', 'parking']
+    site: ['tourist attraction', 'museum', 'art gallery', 'historic site', 'monument', 'gallery', 'cultural site'],
+    hotel: ['hotel', 'accommodation', 'lodging', 'guest house', 'resort'],
+    food: ['restaurant', 'dining', 'bistro', 'cuisine'],
+    cafe: ['cafe', 'coffee shop', 'bakery', 'pastry'],
+    shop: ['shopping', 'store', 'shopping mall', 'boutique', 'market'],
+    transports: ['bus station', 'subway station', 'train station', 'airport', 'parking', 'taxi']
   };
 
-  constructor() {}
+  constructor(private http: HttpClient) {}
 
   /**
-   * Initialiser le service avec une map Google
+   * Initialiser le service (pour compatibilité avec ancien code)
    */
-  initializeService(map: google.maps.Map): void {
-    this.map = map;
-    this.service = new google.maps.places.PlacesService(map);
+  initializeService(map: any): void {
+    console.log('✓ PlacesService initialized');
+    console.log('Proxy URL:', this.proxyUrl ? '✓ Configured' : '✗ Missing');
   }
 
   /**
@@ -45,30 +48,27 @@ export class PlacesService {
     placeTypes: string[],
     radius: number = 5000
   ): Observable<Place[]> {
-    if (!this.service || !this.map) {
-      console.error('PlacesService not initialized. Call initializeService first.');
-      return throwError(() => new Error('PlacesService not initialized. Call initializeService first.'));
+    if (!this.proxyUrl) {
+      console.error('Proxy URL not configured');
+      return throwError(() => new Error('Proxy URL not configured'));
     }
 
-    // Si pas de types sélectionnés, retourner vide
     if (placeTypes.length === 0) {
       return of([]);
     }
 
     // Créer une requête pour chaque type
-    const requests = placeTypes.flatMap(type => this.typeMapping[type] || []);
-    
-    // Eliminer les doublons
-    const uniqueRequests = [...new Set(requests)];
+    const keywords = placeTypes.flatMap(type => this.typeMapping[type] || []);
+    const uniqueKeywords = [...new Set(keywords)];
 
-    // Faire une recherche par type et combiner tous les résultats
-    return from(uniqueRequests).pipe(
-      mergeMap(placeType => this.searchByPlaceType(location, placeType, radius)),
+    // Faire une recherche par keyword et combiner tous les résultats
+    return from(uniqueKeywords).pipe(
+      mergeMap(keyword => this.searchByKeyword(location, keyword, radius)),
       toArray(),
       map(allResultsArrays => {
         // Aplatir le tableau de tableaux
         const allResults = allResultsArrays.flat();
-        // Dédupliquer par nom et latitude/longitude
+        // Dédupliquer par nom et coordonnées
         const seen = new Set<string>();
         return allResults.filter(place => {
           const key = `${place.name}-${place.coordinates.lat}-${place.coordinates.lng}`;
@@ -85,229 +85,122 @@ export class PlacesService {
   }
 
   /**
-   * Rechercher des lieux par un seul type
+   * Rechercher des lieux par keyword
    */
-  private searchByPlaceType(
+  private searchByKeyword(
     location: { lat: number; lng: number },
-    placeType: string,
+    keyword: string,
     radius: number
   ): Observable<Place[]> {
     return new Observable(observer => {
-      if (!this.service || !this.map) {
-        observer.next([]);
-        observer.complete();
-        return;
-      }
-
-      const request: any = {
-        location: new google.maps.LatLng(location.lat, location.lng),
-        radius: radius,
-        type: placeType
+      const params = {
+        type: 'search',
+        q: `${keyword} near Istanbul`,
+        ll: `${location.lat},${location.lng}`,
+        radius: Math.round(radius / 1000)
       };
 
-      this.service.nearbySearch(
-        request as any,
-        (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            const places = results.map(result => this.convertPlaceResult(result)).filter(p => p !== null) as Place[];
+      
+      this.http.get<any>(this.proxyUrl, { params }).subscribe({
+        next: (response) => {
+          if (response.places && Array.isArray(response.places)) {
+            const places = response.places
+              .map((item: any) => this.convertSerpApiPlace(item))
+              .filter((place: Place | null): place is Place => place !== null);
+            
+            console.log(`✓ Found ${places.length} places for "${keyword}"`);
             observer.next(places);
-          } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-            observer.next([]);
           } else {
-            console.warn(`Places search status: ${status}`);
+            console.warn(`⚠️ No places found for "${keyword}"`);
             observer.next([]);
           }
           observer.complete();
+        },
+        error: (error) => {
+          console.error(`✗ Error searching for "${keyword}":`, error);
+          observer.next([]);
+          observer.complete();
         }
-      );
-    });
-  }
-
-  /**
-   * Convertir un Google Places result en notre interface Place
-   */
-  private convertPlaceResult(result: google.maps.places.PlaceResult): Place | null {
-    if (!result.geometry || !result.geometry.location) {
-      return null;
-    }
-
-    const type = this.detectPlaceType(result);
-    
-    // Filter out places that don't match any category
-    if (type === null) {
-      return null;
-    }
-
-    return {
-      name: result.name || 'Unknown',
-      address: result.vicinity || result.formatted_address || 'Address not available',
-      rating: result.rating || 0,
-      reviews: result.user_ratings_total || 0,
-      type: type,
-      coordinates: {
-        lat: result.geometry.location.lat(),
-        lng: result.geometry.location.lng()
-      },
-      placeId: result.place_id,
-      photos: result.photos?.map(photo => photo.getUrl({ maxWidth: 400, maxHeight: 400 })) || [],
-      openingHours: result.opening_hours?.weekday_text || []
-    };
-  }
-
-  /**
-   * Détecter le type de lieu basé sur types Google ET le nom du lieu
-   */
-  private detectPlaceType(result: google.maps.places.PlaceResult): 'site' | 'hotel' | 'food' | 'cafe' | 'shop' | 'transports' | null {
-    const types = result.types || [];
-    const name = (result.name || '').toLowerCase();
-    const vicinity = (result.vicinity || '').toLowerCase();
-    
-    // Keywords to search in name/description
-    const hotelKeywords = ['hotel', 'motel', 'resort', 'inn', 'lodge', 'riad', 'guest house', 'pension', 'auberge', 'hébergement', 'accommodation'];
-    const cafeKeywords = ['café', 'cafe', 'coffee', 'bakery', 'boulangerie', 'pastry', 'pâtisserie', 'kahvesi'];
-    const foodKeywords = ['restaurant', 'pizzeria', 'bistro', 'grill', 'steakhouse', 'cuisine', 'diner', 'eatery', 'cantine', 'traiteur'];
-    const transportsKeywords = ['bus', 'métro', 'metro', 'train', 'gare', 'station', 'tramway', 'aéroport', 'airport', 'ferry', 'transport', 'transit', 'parking', 'otopark', 'otoparki', 'taxi'];
-    const shopKeywords = ['shop', 'store', 'mall', 'boutique', 'magasin', 'market', 'center commercial', 'shopping'];
-    const siteKeywords = ['museum', 'musée', 'mosque', 'mosquée', 'church', 'église', 'garden', 'jardin', 'parc', 'monument', 'palace', 'château', 'fort', 'fortress', 'zoo', 'aquarium', 'gallery', 'galerie', 'temple', 'historic', 'archaeological', 'site touristique', 'attraction', 'tourisme'];
-    
-    // Helper function to check if name contains keywords
-    const containsKeywords = (keywords: string[]): boolean => {
-      return keywords.some(keyword => name.includes(keyword) || vicinity.includes(keyword));
-    };
-    
-    // Priority 1: Check Google Places types FIRST (most reliable)
-  
-    // Check for hotel
-    if (types.some(t => ['lodging', 'hotel', 'bed_breakfast', 'accommodation'].includes(t))) {
-      return 'hotel';
-    }
-
-    // Check for transports FIRST (parking, station, etc.)
-    if (types.some(t => ['bus_station', 'subway_station', 'train_station', 'transit_station', 'airport', 'parking', 'ferry_terminal'].includes(t))) {
-      return 'transports';
-    }
-    // Check for cafe
-    if (types.some(t => ['cafe', 'bakery', 'coffee_shop'].includes(t))) {
-      return 'cafe';
-    }
-    // Check for food/restaurant
-    if (types.some(t => ['restaurant', 'meal_delivery', 'meal_takeaway', 'food'].includes(t))) {
-      return 'food';
-    }
-    // Check for shop
-    if (types.some(t => ['shopping_mall', 'store', 'clothing_store', 'shoe_store', 'jewelry_store', 'department_store', 'shopping'].includes(t))) {
-      return 'shop';
-    }
-    // Check for tourist site (LAST, because point_of_interest is too broad)
-    if (types.some(t => ['tourist_attraction', 'museum', 'art_gallery', 'monument', 'zoo', 'place_of_worship'].includes(t))) {
-      return 'site';
-    }
-    
-    // Priority 2: Check name for specific keywords as fallback
-    if (containsKeywords(hotelKeywords)) {
-      return 'hotel';
-    }
-    if (containsKeywords(transportsKeywords)) {
-      return 'transports';
-    }
-    if (containsKeywords(cafeKeywords)) {
-      return 'cafe';
-    }
-    if (containsKeywords(foodKeywords)) {
-      return 'food';
-    }
-    if (containsKeywords(shopKeywords)) {
-      return 'shop';
-    }
-    if (containsKeywords(siteKeywords)) {
-      return 'site';
-    }
-
-    // No match found - return null to filter out
-    return null;
-  }
-
-  /**
-   * Récupérer les détails complets d'un lieu
-   */
-  getPlaceDetails(placeId: string): Observable<any> {
-    return new Observable(observer => {
-      if (!this.service) {
-        observer.next(null);
-        observer.complete();
-        return;
-      }
-
-      const request: google.maps.places.PlaceDetailsRequest = {
-        placeId: placeId,
-        fields: ['name', 'rating', 'review', 'photos', 'opening_hours', 'formatted_phone_number', 'website', 'formatted_address']
-      };
-
-      this.service.getDetails(request, (result: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          observer.next(result);
-        } else {
-          console.warn(`Place details status: ${status}`);
-          observer.next(null);
-        }
-        observer.complete();
       });
     });
   }
 
   /**
-   * Récupérer les photos alternatives d'un lieu
+   * Convertir une réponse SerpApi en objet Place avec validation Istanbul
+   */
+  private convertSerpApiPlace(item: any): Place | null {
+    // Valider les coordonnées strictement pour Istanbul
+    const lat = parseFloat(item.latitude);
+    const lng = parseFloat(item.longitude);
+
+    // Istanbul bounds: lat ~40.77 to ~41.26, lng ~28.69 to ~29.43
+    // Ajouter une petite marge de sécurité
+    if (!isFinite(lat) || !isFinite(lng) || 
+        lat < 40.7 || lat > 41.3 || 
+        lng < 28.6 || lng > 29.5) {
+      console.warn(`⚠️ Skipping "${item.title}": coordinates [${lat}, ${lng}] are outside Istanbul`);
+      return null;
+    }
+
+    // Détecter le type basé sur le titre/description
+    const type = this.detectPlaceType(item.title, item.description || '');
+
+    return {
+      placeId: item.place_id || `${item.title}-${item.latitude}-${item.longitude}`,
+      name: item.title || 'Unnamed Place',
+      address: item.address || item.description || 'Address not available',
+      coordinates: {
+        lat: lat,
+        lng: lng
+      },
+      rating: item.rating ? Math.round(parseFloat(item.rating)) : 0,
+      reviews: item.review_count || 0,
+      type: type as 'site' | 'hotel' | 'food' | 'cafe' | 'shop' | 'transports',
+      photos: item.image ? [item.image] : [],
+      phoneNumber: item.phone || ''
+    };
+  }
+
+  /**
+   * Détecter le type de place basé sur le titre et la description
+   */
+  private detectPlaceType(title: string, description: string): string {
+    const text = `${title} ${description}`.toLowerCase();
+
+    for (const [type, keywords] of Object.entries(this.typeMapping)) {
+      for (const keyword of keywords) {
+        if (text.includes(keyword.toLowerCase())) {
+          return type;
+        }
+      }
+    }
+
+    return 'site';
+  }
+
+  /**
+   * Récupérer les photos additionnelles d'un lieu
    */
   getPlacePhotos(placeId: string): Observable<string[]> {
     return new Observable(observer => {
-      if (!this.service) {
-        observer.next([]);
-        observer.complete();
-        return;
-      }
-
-      const request: google.maps.places.PlaceDetailsRequest = {
-        placeId: placeId,
-        fields: ['photos']
+      const params = {
+        type: 'place',
+        place_id: placeId
       };
 
-      this.service.getDetails(request, (result: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && result && result.photos) {
-          const photoUrls = result.photos.map(photo => photo.getUrl({ maxWidth: 400, maxHeight: 400 }));
-          observer.next(photoUrls);
-        } else {
+      this.http.get<any>(this.proxyUrl, { params }).subscribe({
+        next: (response) => {
+          const photos: string[] = [];
+          if (response.photos && Array.isArray(response.photos)) {
+            photos.push(...response.photos.map((p: any) => p.image || p));
+          }
+          observer.next(photos);
+          observer.complete();
+        },
+        error: () => {
           observer.next([]);
+          observer.complete();
         }
-        observer.complete();
-      });
-    });
-  }
-
-  /**
-   * Rechercher par texte (pour future implémentation)
-   */
-  searchPlacesByText(query: string, location: { lat: number; lng: number }, radius: number = 5000): Observable<Place[]> {
-    return new Observable(observer => {
-      if (!this.service) {
-        observer.next([]);
-        observer.complete();
-        return;
-      }
-
-      const request: any = {
-        query: query,
-        location: new google.maps.LatLng(location.lat, location.lng),
-        radius: radius
-      };
-
-      this.service.textSearch(request, (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const places = results.map(result => this.convertPlaceResult(result)).filter(p => p !== null) as Place[];
-          observer.next(places);
-        } else {
-          observer.next([]);
-        }
-        observer.complete();
       });
     });
   }
@@ -322,7 +215,7 @@ export class PlacesService {
       food: '🍽️',
       cafe: '☕',
       shop: '🛍️',
-      drinks: '🍹'
+      transports: '🚌'
     };
     return icons[type] || '📍';
   }
@@ -337,7 +230,7 @@ export class PlacesService {
       food: '#fbbc05',      // Yellow
       cafe: '#ea4335',      // Red
       shop: '#f39c12',      // Orange
-      drinks: '#8e44ad'     // Purple
+      transports: '#ff6d00' // Deep Orange
     };
     return colors[type] || '#667eea';
   }
