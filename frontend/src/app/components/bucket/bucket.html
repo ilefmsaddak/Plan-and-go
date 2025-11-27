@@ -36,11 +36,23 @@
   <div class="bucket-content">
     <div class="day-zone" *ngFor="let day of days; let i = index" cdkDropList id="day-{{i}}"
       [cdkDropListData]="day.places" [cdkDropListConnectedTo]="['favorites']"
-      (cdkDropListDropped)="onDropToDay($event, i)">
+      (cdkDropListDropped)="onDropToDay($event, i)"
+      [class.selected]="selectedDayIndex === i">
 
       <div class="trip-item">
-        <span class="date-label">{{ day.date }}</span>
-        <span class="temp-label">{{ day.temp }}</span>
+        <div class="trip-header">
+          <div>
+            <span class="date-label">{{ day.date }}</span>
+            <span class="temp-label">{{ day.temp }}</span>
+          </div>
+          <button 
+            class="view-itinerary-btn" 
+            [disabled]="day.places.length === 0"
+            [class.active]="selectedDayIndex === i"
+            (click)="selectedDayIndex === i ? deselectDay() : selectDay(i)">
+            {{ selectedDayIndex === i ? '✕' : '🗺️' }}
+          </button>
+        </div>
       </div>
 
       <div class="content">

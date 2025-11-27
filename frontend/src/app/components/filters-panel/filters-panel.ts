@@ -47,16 +47,36 @@ export class FiltersPanel implements OnInit, OnChanges {
 
   selectedPlace: any = null; // Pour stocker le lieu sélectionné
   showPlaceDetails = false; // Pour contrôler l'affichage des détails
+  previousPlaces: Place[] = []; // Stocker l'état précédent de la liste
+  currentImageIndex: number = 0; // Index de l'image actuelle dans le carrousel
 
-
-
-  
   // Méthode pour fermer les détails et retourner à la liste
   closePlaceDetails(): void {
     this.showPlaceDetails = false;
     this.selectedPlace = null;
+    this.currentImageIndex = 0; // Réinitialiser l'index
+    // Restaurer l'état précédent de la carte avec tous les lieux filtrés
+    if (this.previousPlaces.length > 0) {
+      this.placesFound.emit(this.previousPlaces);
+    }
   }
 
+  // Méthodes pour le carrousel d'images
+  nextImage(): void {
+    if (this.selectedPlace && this.selectedPlace.photos) {
+      this.currentImageIndex = (this.currentImageIndex + 1) % this.selectedPlace.photos.length;
+    }
+  }
+
+  prevImage(): void {
+    if (this.selectedPlace && this.selectedPlace.photos) {
+      this.currentImageIndex = (this.currentImageIndex - 1 + this.selectedPlace.photos.length) % this.selectedPlace.photos.length;
+    }
+  }
+
+  selectImage(index: number): void {
+    this.currentImageIndex = index;
+  }
 
   // Méthode pour formater l'adresse (si nécessaire)
   formatAddress(address: string): string {
@@ -65,7 +85,7 @@ export class FiltersPanel implements OnInit, OnChanges {
   private loadDefaultPlaces() {
     this.loading = true;
     const allTypes = ['site', 'hotel', 'food', 'cafe', 'shop', 'transports'];
-    
+
     this.placesService
       .searchPlacesByType(this.mapLocation, allTypes, this.searchRadius)
       .subscribe({
@@ -88,7 +108,7 @@ export class FiltersPanel implements OnInit, OnChanges {
               this.loadDefaultPlaces();
             }, 500);
           } else {
-            this.error = 'Erreur lors du chargement des lieux. Veuillez vérifier votre clé API.';
+            this.error = 'Error loading places. Please check your API key.';
             this.loading = false;
           }
         }
@@ -101,7 +121,7 @@ export class FiltersPanel implements OnInit, OnChanges {
     } else {
       this.selectedFilters.push(filterType);
     }
-    
+
     // Update the displayed places based on current filter selection
     this.updatePlacesByFilter();
   }
@@ -115,7 +135,7 @@ export class FiltersPanel implements OnInit, OnChanges {
       this.filtersChanged.emit([]);
     } else {
       // Filter allPlaces based on selected filters
-      const filteredPlaces = this.allPlaces.filter(place => 
+      const filteredPlaces = this.allPlaces.filter(place =>
         this.selectedFilters.includes(place.type)
       );
       this.places = filteredPlaces;
@@ -126,6 +146,8 @@ export class FiltersPanel implements OnInit, OnChanges {
   }
 
   onPlaceCardClick(place: Place) {
+    // Sauvegarder l'état précédent avant d'afficher un seul lieu
+    this.previousPlaces = [...this.places];
     // Emit an event to the map to highlight this marker
     this.placesFound.emit([place]);
     this.selectedPlace = place;
@@ -137,7 +159,7 @@ export class FiltersPanel implements OnInit, OnChanges {
     // Track broken image
     if (place.placeId) {
       this.brokenImages.add(place.placeId);
-      
+
       // Try to fetch alternative photos from Google Places
       this.placesService.getPlacePhotos(place.placeId).subscribe({
         next: (photoUrls: string[]) => {
@@ -145,7 +167,7 @@ export class FiltersPanel implements OnInit, OnChanges {
             // Find first URL that's different from the broken one
             const brokenUrl = event.target.src;
             const alternativeUrl = photoUrls.find(url => url !== brokenUrl);
-            
+
             if (alternativeUrl) {
               event.target.src = alternativeUrl;
               return;
@@ -174,22 +196,22 @@ export class FiltersPanel implements OnInit, OnChanges {
       shop: 'shopping mall store',
       transports: 'bus station train'
     };
-    
+
     const keyword = typeKeywords[place.type] || 'place';
     const searchTerm = `${place.name} ${keyword}`.toLowerCase().trim().replace(/\s+/g, '+');
-    
+
     // Try multiple image sources in order
     const imageSources = [
       // 1. Unsplash - Free high-quality images
       `https://source.unsplash.com/400x300/?${searchTerm}`,
-      
+
       // 2. Picsum (Lorem Picsum) - Placeholder with actual photos
       `https://picsum.photos/400/300?random=${Math.random()}`,
-      
+
       // 3. DummyImage with a nice color based on type
       this.getColoredPlaceholderUrl(place)
     ];
-    
+
     // Try each source sequentially
     this.tryImageSources(event, place, imageSources, 0);
   }
@@ -200,26 +222,26 @@ export class FiltersPanel implements OnInit, OnChanges {
       this.setImageFallback(event, place);
       return;
     }
-    
+
     const img = new Image();
     const timeout = setTimeout(() => {
       // Timeout after 3 seconds per image
       img.onerror?.(null as any);
     }, 3000);
-    
+
     img.onload = () => {
       clearTimeout(timeout);
       event.target.src = sources[index];
       console.log(`Image loaded from source ${index + 1} for ${place.name}`);
     };
-    
+
     img.onerror = () => {
       clearTimeout(timeout);
       console.log(`Source ${index + 1} failed for ${place.name}, trying next...`);
       // Try next source
       this.tryImageSources(event, place, sources, index + 1);
     };
-    
+
     img.src = sources[index];
   }
 
@@ -234,7 +256,7 @@ export class FiltersPanel implements OnInit, OnChanges {
     };
     const bgColor = colors[place.type] || '9c27b0';
     const textColor = 'ffffff';
-    
+
     // Use DummyImage API
     return `https://dummyimage.com/400x300/${bgColor}/${textColor}&text=${encodeURIComponent(place.name.substring(0, 20))}`;
   }
@@ -275,7 +297,7 @@ export class FiltersPanel implements OnInit, OnChanges {
 
   getPlacePhoto(place: Place): string {
     if (place.photos && place.photos.length > 0) {
-      return place.photos[0];
+      return place.photos[this.currentImageIndex] || place.photos[0];
     }
     // Fallback image based on place type
     const typeIcons: { [key: string]: string } = {
@@ -286,7 +308,7 @@ export class FiltersPanel implements OnInit, OnChanges {
       shop: '🛍️',
       transports: '🚌'
     };
-    
+
     // Return a colored placeholder with emoji
     const emoji = typeIcons[place.type] || '📍';
     const colors: { [key: string]: string } = {
@@ -302,5 +324,5 @@ export class FiltersPanel implements OnInit, OnChanges {
   }
 
 
-  
+
 }

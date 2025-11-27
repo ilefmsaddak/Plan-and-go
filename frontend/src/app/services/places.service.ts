@@ -100,14 +100,14 @@ export class PlacesService {
         radius: Math.round(radius / 1000)
       };
 
-      
+
       this.http.get<any>(this.proxyUrl, { params }).subscribe({
         next: (response) => {
           if (response.places && Array.isArray(response.places)) {
             const places = response.places
               .map((item: any) => this.convertSerpApiPlace(item))
               .filter((place: Place | null): place is Place => place !== null);
-            
+
             console.log(`✓ Found ${places.length} places for "${keyword}"`);
             observer.next(places);
           } else {
@@ -135,8 +135,8 @@ export class PlacesService {
 
     // Istanbul bounds: lat ~40.77 to ~41.26, lng ~28.69 to ~29.43
     // Ajouter une petite marge de sécurité
-    if (!isFinite(lat) || !isFinite(lng) || 
-        lat < 40.7 || lat > 41.3 || 
+    if (!isFinite(lat) || !isFinite(lng) ||
+        lat < 40.7 || lat > 41.3 ||
         lng < 28.6 || lng > 29.5) {
       console.warn(`⚠️ Skipping "${item.title}": coordinates [${lat}, ${lng}] are outside Istanbul`);
       return null;
@@ -157,7 +157,8 @@ export class PlacesService {
       reviews: item.review_count || 0,
       type: type as 'site' | 'hotel' | 'food' | 'cafe' | 'shop' | 'transports',
       photos: item.image ? [item.image] : [],
-      phoneNumber: item.phone || ''
+      phoneNumber: item.phone || '',
+      website: item.website || ''
     };
   }
 

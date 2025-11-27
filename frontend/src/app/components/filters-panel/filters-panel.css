@@ -65,17 +65,28 @@
 
 .details-photo {
   position: relative;
-  height: 200px;
+  height: 280px;
   flex-shrink: 0;
   overflow: hidden;
   background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 .details-photo-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
+  background: #f5f5f5;
+  image-rendering: crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  filter: brightness(1.05) contrast(1.1) saturate(1.05);
+  transition: filter 0.3s ease;
+}
+
+.details-photo-image:hover {
+  filter: brightness(1.1) contrast(1.15) saturate(1.1);
 }
 
 .details-type-badge {
@@ -91,6 +102,106 @@
   letter-spacing: 0.5px;
   backdrop-filter: blur(4px);
   text-transform: uppercase;
+}
+
+/* Image Carousel Controls */
+.image-carousel-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 16px;
+  border-radius: 24px;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.carousel-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.carousel-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.image-counter {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Image Thumbnails */
+.image-thumbnails {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+  padding: 12px 8px 8px 8px;
+}
+
+.thumbnails-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 4px;
+  scroll-behavior: smooth;
+}
+
+.thumbnails-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.thumbnails-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.thumbnails-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.thumbnail:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.thumbnail.active {
+  border-color: #667eea;
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(102, 126, 234, 0.6);
 }
 
 .details-content {
@@ -525,6 +636,15 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
+  image-rendering: crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  filter: brightness(1.03) contrast(1.08) saturate(1.02);
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.place-card:hover .photo-image {
+  filter: brightness(1.08) contrast(1.12) saturate(1.08);
+  transform: scale(1.02);
 }
 
 .place-type-badge {

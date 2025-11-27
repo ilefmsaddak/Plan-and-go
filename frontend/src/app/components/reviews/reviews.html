@@ -1,5 +1,5 @@
 <div class="top-actions">
-  <button (click)="SumReviews()" [disabled]="loading" class="btn">
+  <button (click)="SumReviews()" [disabled]="loading || reviews.length === 0" class="btn">
     <span *ngIf="!loading">✨ Summarize Reviews</span>
     <span *ngIf="loading" class="loading">
       <span class="hourglass">⌛</span> Generating...
@@ -14,28 +14,42 @@
 
 <!-- AI Summary -->
 <div *ngIf="aiSummary" class="ai-summary-card">
-  <h3>AI Summary</h3>
-  <p>{{ aiSummary }}</p>
+  <div class="summary-header">
+    <h3>🤖 AI Summary</h3>
+  </div>
+  <p class="summary-text">{{ aiSummary }}</p>
+</div>
+
+<!-- Error Message for No Reviews -->
+<div *ngIf="!loading && reviews.length === 0 && !reviewsError" class="reviews-error">
+  <span class="error-icon">ℹ️</span>
+  <p>No reviews available for this place.</p>
+</div>
+
+<!-- Custom Error Message -->
+<div *ngIf="reviewsError" class="reviews-error">
+  <span class="error-icon">ℹ️</span>
+  <p>{{ reviewsError }}</p>
 </div>
 
 <!-- Reviews -->
-<div *ngFor="let review of reviews" class="review-item">
+<div *ngIf="reviews.length > 0" class="reviews-container">
+  <h3 class="reviews-title">📝 Reviews ({{ reviews.length }})</h3>
+  <div *ngFor="let review of reviews" class="review-item">
+    <!-- Author section -->
+    <div class="author-box">
+      <div>
+        <h3>{{ review.author_name }}</h3>
 
-  <!-- Author section -->
-  <div class="author-box">
-
-    <div>
-      <h3>{{ review.author_name }}</h3>
-
-      <!-- ⭐ Star rating -->
-      <div class="stars">
-        <span *ngFor="let star of [1,2,3,4,5]">
-          <span [class.filled]="star <= review.rating">★</span>
-        </span>
+        <!-- ⭐ Star rating -->
+        <div class="stars">
+          <span *ngFor="let star of [1,2,3,4,5]">
+            <span [class.filled]="star <= review.rating">★</span>
+          </span>
+        </div>
       </div>
     </div>
+
+    <p class="review-text">{{ review.text }}</p>
   </div>
-
-  <p class="review-text">{{ review.text }}</p>
 </div>
-

@@ -5,7 +5,7 @@
             <h1 class="logo">🌍 Plan & Go</h1>
             <div class="header-actions">
                 <a href="/" class="nav-link">Accueil</a>
-
+            
                 <!-- Afficher uniquement si connecté -->
                 <div *ngIf="isAuthenticated()" class="authenticated-actions">
                     <app-notifications></app-notifications>
@@ -14,6 +14,8 @@
             </div>
         </div>
     </header>
+
+    
 
     <!-- Main Content -->
     <main class="app-main">

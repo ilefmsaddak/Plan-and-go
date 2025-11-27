@@ -1,39 +1,44 @@
 <div class="main-layout">
-  <!-- Header with Title and Navigation -->
-  <header class="header-section">
-    <div class="header-content">
-      <div class="brand">
-        <span class="brand-icon">📍</span>
-        <h1 class="brand-title">Plan & Go</h1>
-      </div>
-      <nav class="nav-menu">
-        <button class="nav-item">Existing Itineraries</button>
-      </nav>
-    </div>
-  </header>
+  
 
-  <!-- Main Content Container: 3 Parts Layout -->
+
+<!-- Main Content Container: 3 Parts Layout -->
   <div class="content-wrapper">
     <!-- Left Part: Trip Bucket / Itinerary Planning -->
     <section class="left-panel trip-bucket">
-      <app-bucket></app-bucket>
+      <app-bucket
+        (daySelected)="onDaySelected($event)"
+        (dayDeselected)="onDayDeselected()">
+      </app-bucket>
     </section>
 
-    <!-- Middle Part: Filters Panel with Places List -->
+    <!-- Middle Part: Filters Panel OR Itinerary Guidance -->
     <section class="middle-panel filters-container">
+      <!-- Filters Panel (shown by default) -->
       <app-filters-panel
+        *ngIf="!showItinerary"
         [mapLocation]="currentLocation"
         [searchRadius]="searchRadius"
         (filtersChanged)="onFiltersChanged($event)"
         (placesFound)="onPlacesFound($event)">
       </app-filters-panel>
+
+      <!-- Itinerary Guidance (shown when day is selected) -->
+      <app-itinerary-guidance
+        *ngIf="showItinerary && selectedDay"
+        [places]="selectedDay.places"
+        [dayDate]="selectedDay.date"
+        (routeCalculated)="routeCoordinates = $event">
+      </app-itinerary-guidance>
     </section>
 
     <!-- Right Part: Google Maps -->
     <section class="right-panel map-container">
       <app-google-maps
         [activeFilters]="activeFilters"
-        [places]="places">
+        [places]="showItinerary ? dayRoutePlaces : places"
+        [routeCoordinates]="routeCoordinates"
+        (placeDetailsRequested)="onPlaceDetailsFromMap($event)">
       </app-google-maps>
     </section>
   </div>

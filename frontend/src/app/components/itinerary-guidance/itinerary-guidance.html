@@ -1,0 +1,175 @@
+<div class="itinerary-guidance">
+
+  <!-- HEADER -->
+  <div class="guidance-header">
+    <div class="day-info">
+      <span class="date-icon">📅</span>
+      <h2>{{ dayDate }}</h2>
+    </div>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner">⏳</div>
+    <p><strong>Calculating itinerary...</strong></p>
+    <p style="font-size: 12px; opacity: 0.8;">Comparing transport options</p>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div *ngIf="error && !loading" class="error-state">
+    <span class="error-icon">⚠️</span>
+    <p><strong>Error</strong></p>
+    <p style="font-size: 12px; margin: 0;">{{ error }}</p>
+  </div>
+
+  <!-- CONTENT SCROLLABLE CONTAINER -->
+  <div *ngIf="!loading && !error" class="scrollable-content">
+    
+    <!-- TRANSPORT OPTIONS COMPARISON -->
+    <div *ngIf="transportComparison" class="transport-options">
+      <h3>Transport options</h3>
+      <div class="transport-grid">
+        <!-- Voiture -->
+        <div *ngIf="transportComparison.car" 
+             class="transport-card"
+             [class.recommended]="transportComparison.recommended?.mode === 'driving-car'"
+             [class.selected]="selectedTransport === 'car'"
+             (click)="selectTransport('car')">
+          <div class="transport-icon">🚗</div>
+          <div class="transport-name">Car</div>
+          <div class="transport-stats">
+            <div class="stat-item">
+              <span class="stat-label">Distance:</span>
+              <span class="stat-value">{{ routeService.formatDistance(transportComparison.car.distance) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Duration:</span>
+              <span class="stat-value">{{ routeService.formatDuration(transportComparison.car.duration) }}</span>
+            </div>
+            <div class="stat-item" *ngIf="transportComparison.car.co2Emission">
+              <span class="stat-label">CO₂:</span>
+              <span class="stat-value">{{ transportComparison.car.co2Emission.toFixed(1) }} kg</span>
+            </div>
+          </div>
+          <div *ngIf="transportComparison.recommended?.mode === 'driving-car'" class="badge-recommended">Recommended</div>
+          <div *ngIf="selectedTransport === 'car'" class="badge-selected">Selected</div>
+        </div>
+
+        <!-- Walking -->
+        <div *ngIf="transportComparison.foot" 
+             class="transport-card"
+             [class.recommended]="transportComparison.recommended?.mode === 'foot-walking'"
+             [class.selected]="selectedTransport === 'foot'"
+             (click)="selectTransport('foot')">
+          <div class="transport-icon">🚶</div>
+          <div class="transport-name">Walking</div>
+          <div class="transport-stats">
+            <div class="stat-item">
+              <span class="stat-label">Distance:</span>
+              <span class="stat-value">{{ routeService.formatDistance(transportComparison.foot.distance) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Duration:</span>
+              <span class="stat-value">{{ routeService.formatDuration(transportComparison.foot.duration) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">CO₂:</span>
+              <span class="stat-value">0 kg</span>
+            </div>
+          </div>
+          <div *ngIf="transportComparison.recommended?.mode === 'foot-walking'" class="badge-recommended">Recommended</div>
+          <div *ngIf="selectedTransport === 'foot'" class="badge-selected">Selected</div>
+        </div>
+
+        <!-- Bicycle -->
+        <div *ngIf="transportComparison.bicycle" 
+             class="transport-card"
+             [class.recommended]="transportComparison.recommended?.mode === 'cycling-regular'"
+             [class.selected]="selectedTransport === 'bicycle'"
+             (click)="selectTransport('bicycle')">
+          <div class="transport-icon">🚴</div>
+          <div class="transport-name">Bicycle</div>
+          <div class="transport-stats">
+            <div class="stat-item">
+              <span class="stat-label">Distance:</span>
+              <span class="stat-value">{{ routeService.formatDistance(transportComparison.bicycle.distance) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Duration:</span>
+              <span class="stat-value">{{ routeService.formatDuration(transportComparison.bicycle.duration) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">CO₂:</span>
+              <span class="stat-value">0 kg</span>
+            </div>
+          </div>
+          <div *ngIf="transportComparison.recommended?.mode === 'cycling-regular'" class="badge-recommended">Recommended</div>
+          <div *ngIf="selectedTransport === 'bicycle'" class="badge-selected">Selected</div>
+        </div>
+
+        <!-- Motorbike -->
+        <div *ngIf="transportComparison.motorbike" 
+             class="transport-card"
+             [class.recommended]="transportComparison.recommended?.mode === 'motorbike'"
+             [class.selected]="selectedTransport === 'motorbike'"
+             (click)="selectTransport('motorbike')">
+          <div class="transport-icon">🏍️</div>
+          <div class="transport-name">Motorbike</div>
+          <div class="transport-stats">
+            <div class="stat-item">
+              <span class="stat-label">Distance:</span>
+              <span class="stat-value">{{ routeService.formatDistance(transportComparison.motorbike.distance) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Duration:</span>
+              <span class="stat-value">{{ routeService.formatDuration(transportComparison.motorbike.duration) }}</span>
+            </div>
+            <div class="stat-item" *ngIf="transportComparison.motorbike.co2Emission">
+              <span class="stat-label">CO₂:</span>
+              <span class="stat-value">{{ transportComparison.motorbike.co2Emission.toFixed(1) }} kg</span>
+            </div>
+          </div>
+          <div *ngIf="transportComparison.recommended?.mode === 'motorbike'" class="badge-recommended">Recommended</div>
+          <div *ngIf="selectedTransport === 'motorbike'" class="badge-selected">Selected</div>
+        </div>
+      </div>
+
+      <!-- Recommendation explanation -->
+      <div *ngIf="transportComparison.recommended" class="recommendation-explanation">
+        <div class="explanation-icon">💡</div>
+        <div class="explanation-content">
+          <strong>Our recommendation:</strong>
+          {{ getRecommendationExplanation(transportComparison.recommended) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- LEG SUMMARIES SECTION -->
+    <div *ngIf="legSummaries && legSummaries.length > 0" class="legs-summary">
+      <h3>Trip steps</h3>
+      <div class="legs-list">
+        <div *ngFor="let leg of legSummaries; let i = index" class="leg-item">
+          <span class="leg-number">{{ i + 1 }}</span>
+          <div class="leg-text">
+            <div class="leg-description">{{ leg.text }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- NO ROUTE MESSAGE -->
+    <div *ngIf="!route && places.length >= 2" class="no-route">
+      <span>🗺️</span>
+      <p>No itinerary found for these places</p>
+    </div>
+
+  </div><!-- End of scrollable-content -->
+
+  <!-- NO PLACES MESSAGE -->
+  <div *ngIf="!loading && !error && places.length < 2" class="no-route">
+    <span>🗺️</span>
+    <p>Select a day with at least 2 places to show the itinerary</p>
+  </div>
+
+</div><!-- End of itinerary-guidance -->

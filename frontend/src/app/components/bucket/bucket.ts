@@ -1,14 +1,8 @@
-import { Component, OnInit } from '@angular/core';
-import { BucketService, FavoritePlace } from '../../services/bucket.service/bucketService';
+import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { BucketService, FavoritePlace, DayPlan } from '../../services/bucket.service/bucketService';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
-
-interface DayPlan {
-  date: string;
-  temp: string;
-  places: FavoritePlace[];
-}
 
 @Component({
   selector: 'app-bucket',
@@ -19,9 +13,13 @@ interface DayPlan {
 })
 export class Bucket implements OnInit {
 
+  @Output() daySelected = new EventEmitter<{ day: DayPlan; dayIndex: number }>();
+  @Output() dayDeselected = new EventEmitter<void>();
+
   favorites: FavoritePlace[] = [];
   days: DayPlan[] = [];
   favoritesConnectedTo: string[] = [];
+  selectedDayIndex: number | null = null;
 
   typeIcons: { [key: string]: string } = {
     site: '📷',
@@ -51,12 +49,20 @@ export class Bucket implements OnInit {
       console.log("Favorites updated:", this.favorites);
     });
 
-    // Temporary days
-    this.days = [
-      { date: '22/11/2025', temp: '82° / 73°', places: [] },
-      { date: '23/11/2025', temp: '81° / 72°', places: [] },
-      { date: '24/11/2025', temp: '80° / 72°', places: [] },
-    ];
+    // Load days from localStorage, or initialize defaults
+    const savedDays = this.bucketService.getSavedDays();
+    if (savedDays && savedDays.length > 0) {
+      this.days = savedDays;
+     
+    } else {
+      this.days = [
+        { date: '22/11/2025', temp: '82° / 73°', places: [] },
+        { date: '23/11/2025', temp: '81° / 72°', places: [] },
+        { date: '24/11/2025', temp: '80° / 72°', places: [] },
+        
+      ];
+      this.bucketService.saveDays(this.days);
+    }
 
     // Generate IDs for connected drop lists
     this.favoritesConnectedTo = this.days.map((_, i) => `day-${i}`);
@@ -66,6 +72,8 @@ export class Bucket implements OnInit {
   onDropToFavorites(event: CdkDragDrop<FavoritePlace[]>) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+      // Persist order changes
+      this.bucketService.setFavorites(this.favorites);
     }
   }
 
@@ -86,8 +94,10 @@ export class Bucket implements OnInit {
 
       // Remove only the dragged object, not all with same id
       this.bucketService.removeFavorite(movedItem);
+      this.bucketService.saveDays(this.days);
     } else {
       moveItemInArray(day.places, event.previousIndex, event.currentIndex);
+      this.bucketService.saveDays(this.days);
     }
   }
   removeFromDay(placeId: string, dayIndex: number) {
@@ -96,8 +106,30 @@ export class Bucket implements OnInit {
     const index = day.places.findIndex(p => p.id === placeId);
     if (index > -1) {
       day.places.splice(index, 1);
+      this.bucketService.saveDays(this.days);
     }
   }
+
+  selectDay(dayIndex: number): void {
+    const day = this.days[dayIndex];
+    if (!day) return;
+
+    if (day.places.length === 0) {
+      alert('Ce jour n\'a pas de places. Ajoutez des places en les glissant-déposant.');
+      return;
+    }
+
+    this.selectedDayIndex = dayIndex;
+    this.daySelected.emit({ day, dayIndex });
+    console.log('📅 Day selected:', dayIndex, day);
+  }
+
+  deselectDay(): void {
+    this.selectedDayIndex = null;
+    this.dayDeselected.emit();
+    console.log('📅 Day deselected');
+  }
+
   saveItinerary() {
     const tripId = localStorage.getItem("plan")! //'69222600a58e36d7798161f6'; // Replace with actual trip id when nour finiches
     this.bucketService.saveItinerary(this.days, tripId).subscribe({
@@ -111,5 +143,4 @@ export class Bucket implements OnInit {
       }
     });
   }
-
 }

@@ -67,14 +67,25 @@ def proxy_serpapi(request):
         
         logger.info(f"SerpApi request: engine={params.get('engine')}, q={params.get('q')}, ll={params.get('ll')}")
         
-        # Effectuer la requête à SerpApi
+        # Effectuer la requête à SerpApi avec retry et timeout augmenté
         try:
-            serpapi_response = requests.get(
-                'https://serpapi.com/search', 
-                params=params, 
-                timeout=10
-            )
-            serpapi_response.raise_for_status()
+            max_retries = 2
+            serpapi_response = None
+            
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"SerpApi attempt {attempt + 1}/{max_retries}")
+                    serpapi_response = requests.get(
+                        'https://serpapi.com/search', 
+                        params=params, 
+                        timeout=30  # Augmenté de 10 à 30 secondes
+                    )
+                    serpapi_response.raise_for_status()
+                    break  # Succès, sortir de la boucle
+                except requests.exceptions.Timeout:
+                    logger.warning(f"Timeout on attempt {attempt + 1}, retrying...")
+                    if attempt == max_retries - 1:
+                        raise
             
             # Transformer la réponse SerpApi en format attendu par le frontend
             serpapi_data = serpapi_response.json()
@@ -175,7 +186,7 @@ def proxy_serpapi(request):
             return result
             
         except requests.exceptions.Timeout:
-            logger.error('SerpApi request timed out')
+            logger.error('SerpApi request timed out after retries')
             response = JsonResponse({
                 'error': 'SerpApi request timed out',
                 'places': []
